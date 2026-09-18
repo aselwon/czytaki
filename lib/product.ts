@@ -4,8 +4,9 @@ export type ProductInput=z.infer<typeof productSchema>;
 export const formats={comic:"Komiks",story:"Opowiadanie",fairytale:"Bajka"};
 export const worlds={forest:"Magiczny las",space:"Kosmiczna wyprawa",ocean:"Podwodny świat"};
 export const styles={storybook:"Książkowa ilustracja",comic:"Kolorowy komiks",watercolor:"Miękka akwarela"};
-export const bookSchema=z.object({title:z.string().min(3).max(70),summary:z.string().min(10).max(220),character:z.string().min(10).max(700),scenes:z.array(z.object({title:z.string().min(1).max(50),text:z.string().min(10).max(550),imagePrompt:z.string().min(20).max(1600)})).length(6)});
+export const comicPanelSchema=z.object({visual:z.string().min(8).max(220),line:z.string().min(2).max(55),kind:z.enum(["dialogue","narration"])});
+export type ComicPanel=z.infer<typeof comicPanelSchema>;
+export const bookSchema=z.object({title:z.string().min(3).max(70),summary:z.string().min(10).max(220),character:z.string().min(10).max(700),scenes:z.array(z.object({title:z.string().min(1).max(50),text:z.string().min(10).max(550),imagePrompt:z.string().min(20).max(1600),panels:z.array(comicPanelSchema).length(5).optional()})).length(6)});
 export type Book=z.infer<typeof bookSchema>;
-export type OrderView={id:string;status:string;generated:number;title?:string;summary?:string;previewText?:string;name:string;format:ProductInput["format"];amount:number;currency:string;email?:string;error?:string;paymentStatus:string;deliveryStatus:string;};
+export type OrderView={id:string;status:string;generated:number;title?:string;summary?:string;previewText?:string;previewPanels?:ComicPanel[];remakeAvailable?:boolean;comicVersion?:number;name:string;format:ProductInput["format"];amount:number;currency:string;email?:string;error?:string;paymentStatus:string;deliveryStatus:string;};
 export type ServiceConfig={generation:boolean;checkout:boolean;amount:number;currency:string;};
-
