@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile,writeFile} from 'node:fs/promises';
 import {PDFDocument} from 'pdf-lib';
 import {createBookPdf} from '../lib/server/pdf.ts';
+import {comicLayout,comicLayoutCount,comicLayoutPrompt} from '../lib/server/comic-layouts.ts';
 import {productSchema,bookSchema,normalizeGeneratedBook} from '../lib/product.ts';
 test('book contains eight pages, Polish text and a dedicated ending',async()=>{
  const font=new Uint8Array(await readFile(new URL('../lib/assets/LiberationSans-Regular.ttf',import.meta.url)));
@@ -27,6 +28,21 @@ test('comic uses five readable Polish beats on every illustrated page',async()=>
  const bytes=await createBookPdf(book,settings,Array(6).fill(image),font);
  const pdf=await PDFDocument.load(bytes);assert.equal(pdf.getPageCount(),8);assert.equal(pdf.getTitle(),book.title);assert.ok(bytes.length<20*1024*1024);
  if(process.env.PDF_QA_PATH)await writeFile(process.env.PDF_QA_PATH,bytes);
+});
+test('comic has six distinct full-page layouts with five non-overlapping bubble spaces',()=>{
+ assert.equal(comicLayoutCount,6);
+ const patterns=new Set();
+ for(let page=0;page<comicLayoutCount;page++){
+  const layout=comicLayout(page);
+  assert.equal(layout.bubbles.length,5);
+  assert.match(comicLayoutPrompt(page),/No white gutters/);
+  patterns.add(JSON.stringify(layout.bubbles));
+  for(const [i,box] of layout.bubbles.entries()){
+   assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=500&&box.y+box.height<=735);
+   if(i)assert.ok(box.y>=layout.bubbles[i-1].y+layout.bubbles[i-1].height);
+  }
+ }
+ assert.equal(patterns.size,6);
 });
 test('the order schema rejects missing consent and unsupported formats',()=>{
  assert.equal(productSchema.safeParse({name:'Ada',consent:false}).success,false);

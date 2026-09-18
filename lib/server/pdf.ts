@@ -1,26 +1,19 @@
 import {PDFDocument,rgb,type PDFFont,type PDFPage,type PDFImage} from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type {Book,ProductInput,ComicPanel} from "../product";
+import {comicLayout,type BubbleSlot} from "./comic-layouts.ts";
 
 const green=rgb(.09,.28,.22),muted=rgb(.39,.46,.36),cream=rgb(.99,.98,.94),ink=rgb(.055,.075,.075),white=rgb(1,1,1),caption=rgb(1,.97,.78);
 export function wrapText(text:string,font:PDFFont,size:number,width:number){const words=text.replace(/[\r\n]+/g," ").trim().split(/\s+/),lines:string[]=[];let line="";for(const word of words){if(font.widthOfTextAtSize(word,size)>width){if(line){lines.push(line);line="";}let part="";for(const char of word){if(font.widthOfTextAtSize(part+char,size)>width){lines.push(part);part=char;}else part+=char;}line=part;continue;}const next=line?line+" "+word:word;if(font.widthOfTextAtSize(next,size)>width){lines.push(line);line=word;}else line=next;}if(line)lines.push(line);return lines;}
 function block(page:PDFPage,text:string,font:PDFFont,x:number,y:number,width:number,size:number,maxHeight:number,color=green){let lines=wrapText(text,font,size,width);while(lines.length*size*1.5>maxHeight&&size>13){size-=.5;lines=wrapText(text,font,size,width);}if(lines.length*size*1.5>maxHeight)throw new Error("PDF text exceeds layout bounds");for(const line of lines){page.drawText(line,{x,y,size,font,color});y-=size*1.5;}return y;}
 
-type Rect={x:number;y:number;width:number;height:number};
-const panels:Rect[]=[
- {x:47,y:549,width:500,height:245},
- {x:47,y:304,width:244,height:233},
- {x:303,y:304,width:244,height:233},
- {x:47,y:59,width:244,height:233},
- {x:303,y:59,width:244,height:233},
-];
-function drawBubble(page:PDFPage,panel:ComicPanel,font:PDFFont,rect:Rect,index:number){
- const width=index===0?242:198,height=index===0?74:70,x=rect.x+13,y=rect.y+rect.height-height-10;
+function drawBubble(page:PDFPage,panel:ComicPanel,font:PDFFont,slot:BubbleSlot){
+ const width=slot.width,height=slot.height,x=47+slot.x,y=59+735-slot.y-height;
  const isDialogue=panel.kind==="dialogue";
- if(isDialogue)page.drawEllipse({x:x+width/2,y:y+height/2,xScale:width/2,yScale:height/2,color:white,borderColor:ink,borderWidth:2.2});
- else page.drawRectangle({x,y,width,height,color:caption,borderColor:ink,borderWidth:2});
- let size=14,lines=wrapText(panel.line,font,size,width-35);
- while(lines.length*size*1.25>height-22&&size>12){size-=.5;lines=wrapText(panel.line,font,size,width-35);}
+ if(isDialogue)page.drawEllipse({x:x+width/2,y:y+height/2,xScale:width/2,yScale:height/2,color:white,borderColor:ink,borderWidth:1.8});
+ else page.drawRectangle({x,y,width,height,color:caption,borderColor:ink,borderWidth:1.8});
+ let size=13,lines=wrapText(panel.line,font,size,width-37);
+ while(lines.length*size*1.25>height-22&&size>11.5){size-=.5;lines=wrapText(panel.line,font,size,width-37);}
  if(lines.length*size*1.25>height-22)throw new Error("Comic bubble text exceeds bounds");
  const lineHeight=size*1.25,top=y+(height+lines.length*lineHeight)/2-lineHeight*.76;
  lines.forEach((line,i)=>page.drawText(line,{x:x+(width-font.widthOfTextAtSize(line,size))/2,y:top-i*lineHeight,font,size,color:ink}));
@@ -30,10 +23,8 @@ function drawComicPage(page:PDFPage,art:PDFImage,scene:Book["scenes"][number],fo
  page.drawText(scene.title.toLocaleUpperCase("pl-PL"),{x:47,y:811,font,size:15,color:ink});
  page.drawText(String(index+1)+" / 6",{x:516,y:812,font,size:10,color:muted});
  page.drawImage(art,{x:47,y:59,width:500,height:735});
- // Opaque gutters enforce a stable five-panel grid regardless of small AI layout drift.
- for(const y of [292,537])page.drawRectangle({x:45,y,width:504,height:12,color:white});
- for(const y of [59,304])page.drawRectangle({x:291,y,width:12,height:233,color:white});
- panels.forEach((rect,i)=>{page.drawRectangle({...rect,borderColor:ink,borderWidth:3});drawBubble(page,scene.panels![i],font,rect,i);});
+ page.drawRectangle({x:47,y:59,width:500,height:735,borderColor:ink,borderWidth:1.5});
+ comicLayout(index).bubbles.forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot));
  page.drawText("czytaki.",{x:47,y:27,font,size:12,color:ink});
 }
 function drawStoryPage(page:PDFPage,art:PDFImage,scene:Book["scenes"][number],font:PDFFont,p:ProductInput,index:number){
