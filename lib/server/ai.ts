@@ -2,7 +2,9 @@ import {Buffer} from "node:buffer";
 import {ZodError} from "zod";
 import {normalizeGeneratedBook,formats,styles,worlds,type ProductInput,type Book} from "../product";
 import {HttpError,runtime} from "./runtime";
-import {comicLayoutPrompt} from "./comic-layouts.ts";
+import {comicLayoutPrompt as legacyLayoutPrompt} from "./comic-layouts.ts";
+import {comicLayoutPrompt,comicTemplateIndex,COMIC_LAYOUT_VERSION} from "../comic-layouts.ts";
+import {comicTemplateBytes} from "./comic-template-assets";
 
 const string={type:"string"};
 const panelSchema={type:"object",additionalProperties:false,required:["visual","line","kind"],properties:{visual:string,line:string,kind:{type:"string",enum:["dialogue","narration"]}}};
@@ -35,6 +37,7 @@ export async function generateBook(p:ProductInput,photo:Uint8Array,mime:string):
  ].join(" ");
  const r=await openai("responses",JSON.stringify({model:runtime().OPENAI_TEXT_MODEL||"gpt-4.1-mini",store:false,max_output_tokens:6500,instructions,input:[{role:"user",content:[{type:"input_text",text:JSON.stringify({hero:p.name,subject:p.subject,format:formats[p.format],world:worlds[p.world],style:styles[p.style],readerAge:p.age})},{type:"input_image",image_url:image,detail:"low"}]}],text:{format:{type:"json_schema",name:"personalized_book",strict:true,schema:storySchema(comic)}}}),true);
  const book=validatedBook(JSON.parse(outputText(r)));
+ if(comic){book.comicLayoutVersion=COMIC_LAYOUT_VERSION;book.scenes.forEach((scene,i)=>{scene.comicTemplate=comicTemplateIndex(book.title+p.name,i);});}
  if(comic&&!book.scenes.every(scene=>scene.panels?.length===5))throw new HttpError(503,"Komiks nie ma kompletu kadrów.");
  await moderate(JSON.stringify(book)+" "+p.dedication);
  return book;
@@ -55,16 +58,17 @@ export async function generateIllustration(p:ProductInput,b:Book,index:number,re
  const model=runtime().OPENAI_IMAGE_MODEL||"gpt-image-1.5";
  body.set("model",model);
  body.append("image[]",new Blob([reference as BlobPart],{type:mime}),"reference."+(mime==="image/png"?"png":"jpg"));
- if(first)body.append("image[]",new Blob([first as BlobPart],{type:"image/jpeg"}),"established-character.jpg");
+ if(first){const png=first[0]===137;body.append("image[]",new Blob([first as BlobPart],{type:png?"image/png":"image/jpeg"}),"established-character."+(png?"png":"jpg"));}
  const scene=b.scenes[index];
  const character=referenceKind==="photo"
   ?"The FIRST reference is a photograph of the actual main character. Preserve visible facial features, hair, skin tone, or for animals species, fur colour and markings. Never replace the subject with a generic child or animal."
   :"The FIRST reference is an earlier illustration from this very book. Preserve its main character's visible face, hair, clothes, proportions, or animal markings and species. The original photograph is unavailable; use the illustrated appearance faithfully.";
  const continuity=first?"The SECOND reference shows the established character design and style; keep it consistent across all five panels and all pages.":"Establish one consistent character design.";
- const comic=scene.panels?.length===5;
+ const comic=scene.panels?.length===5,templated=comic&&b.comicLayoutVersion===COMIC_LAYOUT_VERSION;
+ if(templated){if(scene.comicTemplate===undefined)throw new Error("Missing comic template");body.append("image[]",new Blob([comicTemplateBytes(scene.comicTemplate) as BlobPart],{type:"image/png"}),"empty-bubble-page-template.png");}
  const panelBrief=comic?[
   "Create ONE full-bleed PORTRAIT CHILDREN'S COMIC PAGE with exactly FIVE DISTINCT sequential visual beats. Do not assemble a grid of separate pictures. Keep the SAME recognizable hero, outfit and setting in every beat, but show changing actions, expressions and camera distances. Use confident hand-inked lines, bright warm color and clear visual storytelling.",
-  comicLayoutPrompt(index),
+  templated?comicLayoutPrompt(scene.comicTemplate!):legacyLayoutPrompt(index),
   ...scene.panels!.map((panel,i)=>"Beat "+(i+1)+" (reading top to bottom): "+panel.visual+"."),
   "No letters, words, captions, logos or watermarks anywhere. Keep all important faces and gestures unobstructed."
  ].join(" "):"Create ONE polished storybook illustration of this scene with detailed composition. No letters, words, captions, typography, logos or watermarks.";

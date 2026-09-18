@@ -1,51 +1,58 @@
 import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
+import {bookSchema} from "@/lib/product";
+import {comicTemplateIndex} from "@/lib/comic-layouts";
 import {generateIllustration,planLegacyComic} from "@/lib/server/ai";
 import {createBookPdf} from "@/lib/server/pdf";
+import {detectBubbleInteriors} from "@/lib/server/bubble-detection";
+import {sceneImageKey,sceneImageType,templatePrefix} from "@/lib/server/comic-assets";
 import {apiError,findOrder,HttpError,infrastructure,ownOrder,runtime,salesReady,sameOrigin,settings,story,view} from "@/lib/server/runtime";
 
-// A one-order, owner-session-only remake while checkout is unavailable.
-// The original artwork and PDF are retained until the new PDF is complete.
+// Owner-session-only remake for the explicitly selected demo/preview orders.
+// The previous book and PDF remain available until the replacement is complete.
 export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
  let id:string|undefined,lock:string|undefined;
  try{
-  sameOrigin(req);
-  let r=await ownOrder(req,(await params).id);
-  id=r.id;
-  if(id!==runtime().DEMO_PDF_ORDER_ID||salesReady()||r.payment_status!=="unpaid"||settings(r).format!=="comic")throw new HttpError(403,"Przeróbka tej książeczki nie jest dostępna.");
-  if(r.pdf_key?.includes("/comic-remake/"))return Response.json({...view(r),remakeProgress:6,remakeReady:true});
+  sameOrigin(req);let r=await ownOrder(req,(await params).id);id=r.id;
+  if((id!==runtime().DEMO_PDF_ORDER_ID&&id!==runtime().PDF_PREVIEW_ORDER_ID)||salesReady()||r.payment_status!=="unpaid"||settings(r).format!=="comic")throw new HttpError(403,"Przeróbka tej książeczki nie jest dostępna.");
+  if(story(r)?.comicLayoutVersion===1)return Response.json({...view(r),remakeProgress:6,remakeReady:true});
   if(r.status!=="ready"||!r.pdf_key)throw new HttpError(409,"Najpierw dokończ książeczkę.");
-  const {DB,BUCKET}=infrastructure(),now=Date.now();
-  lock=crypto.randomUUID();
+  const {DB,BUCKET}=infrastructure(),now=Date.now();lock=crypto.randomUUID();
   const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=?,updated_at=? WHERE id=? AND lock_until<? AND status='ready' AND payment_status='unpaid'").bind(lock,now+300000,now,id,now).run();
   if(!claim.meta.changes)throw new HttpError(409,"Komiks jest już przygotowywany. Spróbuj ponownie za chwilę.");
-  r=await findOrder(id);
-  const p=settings(r);
-  let b=story(r);
-  if(!b)throw new HttpError(503,"Nie znaleziono treści książeczki.");
-  let progress=0,ready=false;
-  if(!b.scenes.every(scene=>scene.panels?.length===5)){
-   b=await planLegacyComic(p,b);
-   await DB.prepare("UPDATE orders SET book=? WHERE id=? AND lock_token=?").bind(JSON.stringify(b),id,lock).run();
+  r=await findOrder(id);const p=settings(r),originalBook=story(r);
+  if(!originalBook)throw new HttpError(503,"Nie znaleziono treści książeczki.");
+  const prefix=templatePrefix(id),staged=await BUCKET.get(`${prefix}/book.json`);
+  let b=staged?bookSchema.parse(await staged.json()):null,progress=0,ready=false;
+  if(!b){
+   b=originalBook.scenes.every(scene=>scene.panels?.length===5)?structuredClone(originalBook):await planLegacyComic(p,originalBook);
+   b.comicLayoutVersion=1;
+   b.scenes.forEach((scene,i)=>{scene.comicTemplate=comicTemplateIndex(b!.title+p.name,i);delete scene.lettering;});
+   await BUCKET.put(`${prefix}/book.json`,JSON.stringify(b),{httpMetadata:{contentType:"application/json"}});
   }else{
    let next=0;
-   while(next<6&&await BUCKET.head("orders/"+id+"/comic-remake/scene-"+next+".jpg"))next++;
+   while(next<6&&b.scenes[next].lettering?.length===5&&await BUCKET.head(sceneImageKey(id,b,next)))next++;
    if(next<6){
-    const original=await BUCKET.get("orders/"+id+"/scene-"+next+".jpg");
-    const first=next?await BUCKET.get("orders/"+id+"/scene-0.jpg"):null;
+    const original=await BUCKET.get(sceneImageKey(id,originalBook,next,r.pdf_key));
+    const first=next?await BUCKET.get(sceneImageKey(id,b,0)):null;
     if(!original)throw new HttpError(503,"Brakuje pierwotnej ilustracji do przeróbki.");
-    const result=await generateIllustration(p,b,next,new Uint8Array(await original.arrayBuffer()),"image/jpeg",first?new Uint8Array(await first.arrayBuffer()):undefined,"illustration");
-    await BUCKET.put("orders/"+id+"/comic-remake/scene-"+next+".jpg",result,{httpMetadata:{contentType:"image/jpeg"}});
+    const result=await generateIllustration(p,b,next,new Uint8Array(await original.arrayBuffer()),sceneImageType(originalBook),first?new Uint8Array(await first.arrayBuffer()):undefined,"illustration");
+    try{b.scenes[next].lettering=detectBubbleInteriors(result,b.scenes[next].comicTemplate!);}
+    catch(e){console.error("Comic bubble validation failed",e instanceof Error?e.message:"Unknown");throw new HttpError(503,"Ta ilustracja wymaga poprawienia pustych dymków. Kliknij ponownie „Odśwież komiks”, aby ponowić tylko tę stronę.");}
+    await BUCKET.put(sceneImageKey(id,b,next),result,{httpMetadata:{contentType:"image/jpeg"}});
+    await BUCKET.put(`${prefix}/book.json`,JSON.stringify(b),{httpMetadata:{contentType:"application/json"}});
     progress=next+1;
    }else{
     const images:Uint8Array[]=[];
-    for(let i=0;i<6;i++){const art=await BUCKET.get("orders/"+id+"/comic-remake/scene-"+i+".jpg");if(!art)throw new HttpError(503,"Brakuje kadru komiksu.");images.push(new Uint8Array(await art.arrayBuffer()));}
+    for(let i=0;i<6;i++){const art=await BUCKET.get(sceneImageKey(id,b,i));if(!art)throw new HttpError(503,"Brakuje planszy komiksu.");images.push(new Uint8Array(await art.arrayBuffer()));}
     const fontBytes=new Uint8Array(Buffer.from(fontUrl.split(",")[1],"base64"));
     const pdf=await createBookPdf(b,p,images,fontBytes);
     if(pdf.length>20*1024*1024)throw new HttpError(503,"Plik jest zbyt duży do wysyłki.");
-    const key="orders/"+id+"/comic-remake/book.pdf";
+    const key=`${prefix}/book.pdf`;
     await BUCKET.put(key,pdf,{httpMetadata:{contentType:"application/pdf"}});
-    await DB.prepare("UPDATE orders SET pdf_key=? WHERE id=? AND lock_token=?").bind(key,id,lock).run();
+    // Preserve the previous metadata alongside its retained images and PDF.
+    if(!await BUCKET.head(`${prefix}/previous-book.json`))await BUCKET.put(`${prefix}/previous-book.json`,JSON.stringify({book:originalBook,pdfKey:r.pdf_key}),{httpMetadata:{contentType:"application/json"}});
+    await DB.prepare("UPDATE orders SET pdf_key=?,book=? WHERE id=? AND lock_token=?").bind(key,JSON.stringify(b),id,lock).run();
     progress=6;ready=true;
    }
   }
