@@ -1,6 +1,6 @@
 import {env} from "cloudflare:workers";
 import {productSchema,bookSchema,type ProductInput,type Book,type OrderView} from "../product";
-export type Runtime={DB:D1Database;BUCKET:R2Bucket;OPENAI_API_KEY?:string;OPENAI_TEXT_MODEL?:string;OPENAI_IMAGE_MODEL?:string;STRIPE_SECRET_KEY?:string;STRIPE_WEBHOOK_SECRET?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;APP_URL?:string;PRICE_CENTS?:string;SALES_ENABLED?:string;DAILY_GENERATION_LIMIT?:string;DEMO_PDF_ORDER_ID?:string;};
+export type Runtime={DB:D1Database;BUCKET:R2Bucket;OPENAI_API_KEY?:string;OPENAI_TEXT_MODEL?:string;OPENAI_IMAGE_MODEL?:string;STRIPE_SECRET_KEY?:string;STRIPE_WEBHOOK_SECRET?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;APP_URL?:string;PRICE_CENTS?:string;SALES_ENABLED?:string;DAILY_GENERATION_LIMIT?:string;DEMO_PDF_ORDER_ID?:string;PDF_PREVIEW_ORDER_ID?:string;};
 export const runtime=()=>env as unknown as Runtime;
 export class HttpError extends Error{constructor(public status:number,message:string){super(message);}}
 export const apiError=(e:unknown)=>{if(e instanceof HttpError)return Response.json({error:e.message},{status:e.status,headers:{"Cache-Control":"no-store"}});console.error("Czytaki request failed",e instanceof Error?e.name:"UnknownError");return Response.json({error:"Usługa jest chwilowo niedostępna. Spróbuj ponownie."},{status:503});};
