@@ -1,56 +1,63 @@
-# Czytaki
+# Czytaki — zdjęcie staje się opowieścią
 
-Polskojęzyczna aplikacja do wspólnego czytania dla dzieci około 5–10 lat. Oryginalny interfejs i treści inspirowane koncepcją personalizowanych historii [EasyRead](https://pulsebook.io/easyread). Kod, teksty, identyfikacja i ilustracja powstały dla tego projektu; nie skopiowano materiałów źródłowej strony.
+Personalizowane komiksy, historie i bajki PDF z dzieckiem, dorosłym lub zwierzęciem ze zdjęcia. Własny interfejs i treści; inspiracja modelem produktu EasyRead, bez kopiowania jego materiałów.
 
-## Co działa
+## Główny proces
 
-- Kreator z imieniem bohatera i towarzysza, wyborem jednej z trzech przygód i poziomu czytania.
-- Trzy autorskie opowieści po sześć rozdziałów, każda w trzech poziomach językowych i z dwiema ścieżkami.
-- Zmiana trudności podczas czytania, wielkie litery, większy tekst i systemowy lektor po polsku.
-- Pytania sprawdzające zrozumienie, cztery odznaki i zapamiętywanie miejsca w historii.
-- Biblioteczka na urządzeniu, filtrowanie, eksport i import kopii JSON z walidacją.
-- Widok do druku / zapisu jako PDF przez systemowy dialog drukowania.
-- „Łapka i spółka”: opowieść z imieniem psa i trzy odwracalne misje wykonywane z dorosłym.
-- Responsywny interfejs, obsługa klawiatury, dialogi z kontrolą fokusu i ograniczenie animacji.
-- WebMCP: `list_reading_library` oraz `create_personalized_story`, działające na tym samym stanie co interfejs.
+1. Dorosły przesyła zdjęcie i potwierdza uprawnienie do użycia wizerunku.
+2. Wybiera bohatera, format, świat, styl ilustracji, grupę wiekową i dedykację.
+3. OpenAI tworzy sześć scen i ilustracje z oryginalnym zdjęciem jako referencją. Kolejne obrazy otrzymują również pierwszą ilustrację dla spójności. Podobieństwo nie jest gwarantowane.
+4. Serwer składa osiem stron PDF: okładka, sześć scen, dedykacja. Pokazuje tylko pierwszy fragment.
+5. Stripe Checkout pobiera ustaloną po stronie serwera cenę.
+6. Po potwierdzeniu płatności przez Stripe plik trafia jako załącznik przez Resend. Możliwe jest też pobranie w przeglądarce zamówienia.
 
-## Uczciwy zakres wersji
+Komiks używa dwukadrowych ilustracji i podpisów pod nimi; nie generuje tekstu wewnątrz dymków. Dawna czytelnia została zachowana osobno pod /czytelnia.
 
-To działające MVP personalizacji **gotowych fabuł**, nie aktywny generator nowych treści AI. Jedna oryginalna ilustracja została wygenerowana z pomocą AI; aplikacja jasno informuje, że jest wspólna dla wszystkich opowieści. Nie ma przesyłania zdjęć, generowania podobizny dziecka, płatności ani synchronizacji kont. Imiona i postępy przechowywane są w `localStorage` tej przeglądarki. Hosting jest prywatny na poziomie Sites; „strefa rodzica” to widok ustawień, nie osobna kontrola dostępu. Głosy i wymowa lektora zależą od systemu i dostępnego polskiego głosu. Google Fonts jest zewnętrznym dostawcą fontów.
+## Stan integracji
 
-## Uruchomienie
+Kod integracji jest zaimplementowany. Obecne wdrożenie nie ma kluczy usług, dlatego generowanie i zakup są jawnie wyłączone. Nie wykonano prawdziwego przebiegu OpenAI → Stripe → Resend. Ilustracja widoczna przed generowaniem jest oznaczonym przykładem, nie wynikiem personalizacji.
 
-Wymagany Node.js >=22.13.0.
+Cena 39 zł jest propozycją demonstracyjną; nie potwierdzono kosztów i marży. Cała książka powstaje przed płatnością, więc także niezakończone zakupy generują koszty AI.
 
-```sh
-npm ci
-npm run dev
-```
+## Konfiguracja
 
-Serwer podaje adres lokalny w terminalu. Kontrola typów: `npx tsc --noEmit`. Wersja produkcyjna: `npm run build`. Podgląd zbudowanego Workera: `npm start`.
+Node >=22.13, npm ci, npm run dev. Sekrety wyłącznie po stronie serwera. Szablon: .env.example; nigdy nie commitować prawdziwych kluczy.
 
-Stos: React 19, TypeScript, Vinext/Vite, Tailwind 4, Radix/Shadcn, Lucide. Docelowe środowisko: Cloudflare Workers przez Sites. Nie są wymagane klucze API ani baza danych.
+W hostingu skonfiguruj:
+- OPENAI_API_KEY; opcjonalnie OPENAI_TEXT_MODEL i OPENAI_IMAGE_MODEL.
+- STRIPE_SECRET_KEY oraz STRIPE_WEBHOOK_SECRET.
+- RESEND_API_KEY i EMAIL_FROM z zatwierdzonej domeny nadawczej.
+- APP_URL z dokładnym adresem aplikacji, PRICE_CENTS w groszach.
+- SALES_ENABLED=true dopiero po testach integracyjnych i uruchomieniu obowiązujących zasad sprzedaży/prywatności.
 
-## Najważniejsze pliki
+Zacznij od Stripe w trybie testowym. Webhook: /api/payments/webhook; zdarzenia checkout.session.completed i checkout.session.async_payment_succeeded. Weryfikowany jest podpis, czas, identyfikator sesji, zamówienie, status, waluta i pełna kwota. Parametr checkout=success nie odblokowuje pliku.
 
-- `app/page.tsx` — strona główna i nawigacja.
-- `app/experience.tsx` — kreator, czytnik, biblioteczka, misje, ustawienia i WebMCP.
-- `lib/stories.ts` — fabuły, poziomy tekstu, ścieżki i walidacja kopii.
-- `app/globals.css` — wygląd, responsywność i wydruk.
-- `public/forest.png` — oryginalna ilustracja projektu.
-- `.openai/hosting.json` — powiązanie z prywatnym Site i repozytorium źródłowym.
+Aktualny Site jest prywatny. Webhook Stripe wymaga osiągalnego adresu bez logowania do Sites; przed sprzedażą trzeba uzgodnić publiczny dostęp lub osobny endpoint. Nie zmieniono odbiorców wdrożenia automatycznie.
 
-## Następny etap AI
+Dane zamówień: D1 DB; zdjęcia i PDF: prywatny R2 BUCKET. Migracja: drizzle/0000_tired_lifeguard.sql, pakowana przez Sites. Lokalnie po build można zastosować ją przez Wrangler d1 execute DB --local z konfiguracją dist/server/wrangler.json i persist-to .wrangler/state.
 
-1. Dodać serwerowy adapter generowania fabuły: profil czytelnika, preferowany świat i zaplanowany schemat sześciu rozdziałów. Klucze wyłącznie w sekretach serwera.
-2. Walidować strukturę, długość i poziom tekstu; kontrolować treści przed udostępnieniem dziecku. Zachować bibliotekę jako jawny tryb awaryjny.
-3. Dodać ilustracje dla poszczególnych scen ze spójnymi bohaterami. Opcjonalny wizerunek dziecka wymaga osobnego przepływu zgody rodzica i zasad usuwania zdjęć.
-4. Dodać kontrolowany zapis na koncie rodzica i eksport składanego komiksu, zamiast jedynie systemowego wydruku.
+## Prywatność i ograniczenia
 
-## Kierunek dla zwierząt: Łapka AI
+Przeglądarka zmniejsza zdjęcie i ponownie koduje je do JPEG bez metadanych. Serwer sprawdza typ i rozmiar. Zdjęcie jest wysyłane do OpenAI dopiero przy generowaniu. Moderowane są dane wejściowe i tekst opowieści. Klucze nie trafiają do klienta.
 
-Najbardziej spójny produkt to **pupil jako bohater opowieści, a dziecko jako jego uważny opiekun**. Rodzic podaje imię, gatunek, wiek i codzienne zwyczaje pupila. AI tworzy krótką historię dopasowaną do poziomu czytania, a po niej proponuje jedną prostą misję do wykonania z dorosłym. W przyszłości zdjęcie pupila może posłużyć do spójnych ilustracji, a historia dnia do rodzinnej książeczki pamiątkowej.
+Dostęp do zamówienia wymaga losowej sesji w ciasteczku HttpOnly; w bazie zapisany jest jej hash. To nie konto użytkownika: usunięcie ciasteczka oznacza utratę dostępu w przeglądarce. Płatny PDF nadal jest wysyłany na podany e-mail.
 
-Pierwszy płatny pakiet mógłby obejmować spersonalizowaną książeczkę i tygodniowe przygody. Warto najpierw sprawdzić, czy rodziny wracają do wspólnego czytania i wykonują misje; dopiero potem budować abonament. To hipoteza produktu, nie potwierdzona analiza rynku.
+Zdjęcie źródłowe jest usuwane po udanym złożeniu PDF. Brak automatycznego sprzątania porzuconych i nieudanych zamówień oraz ich zdjęć — przed publiczną premierą konieczna polityka retencji i zadanie usuwające. Ilustracje i pliki pozostają w prywatnym magazynie. Nie wdrożono panelu administratora, zwrotów ani kolejki automatycznych ponowień.
 
-Dodatkowy dziennik obserwacji może porządkować wpisy dorosłego i przygotowywać podsumowanie do rozmowy z weterynarzem. Nie powinien udawać diagnozy, wiarygodnego „tłumacza szczekania” ani zastępować opieki specjalisty. W aktualnym MVP działa opowieść i lista misji; generowanie oraz dziennik pozostają kolejnym etapem.
+Generowanie jest etapowe i wznawialne z tej samej przeglądarki. Obowiązują dzienne limity na sesję i hash IP; nie zastępują pełnej ochrony przed nadużyciami. Wysyłka ma idempotencję i blokadę współbieżności. Niejednoznaczny wynik starszy niż 23 godziny wymaga ręcznej kontroli zamiast ryzyka duplikatu.
+
+## Weryfikacja
+
+- npm test: poprawność płatności i podpisów, walidacja danych, ośmiostronicowy PDF z polską czcionką.
+- npx tsc --noEmit: kontrola typów.
+- npm run build: wersja produkcyjna.
+- Sprawdzono odpowiedzi API bez konfiguracji: brak zgody origin → 403, brak klucza AI → 503, obce zamówienie → 404.
+- Przykładowy PDF wyrenderowano i sprawdzono wizualnie; to test składu, nie dowód działania personalizacji AI.
+
+## Zwierzęta — ten sam produkt
+
+Tryb „Pupil” jest częścią kreatora: zdjęcie psa, kota lub innego zwierzęcia staje się referencją bohatera. Dalsze pomysły: komiks o adopcji, album pierwszego roku z pupilem i pamiątkowa bajka prezentowa. To produkty kreatywne, nie diagnozowanie zdrowia ani „tłumaczenie” zwierząt.
+
+## Główne moduły
+
+app/studio.tsx — kreator; app/studio.css — wygląd; lib/server/ai.ts — generowanie; lib/server/pdf.ts — skład; lib/server/payments.ts — płatność i wysyłka; app/api — chronione endpointy; db/schema.ts — baza.

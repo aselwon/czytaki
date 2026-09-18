@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./studio.css";
 
 export const metadata: Metadata = {
-  title: "Czytaki — Twoja własna przygoda",
-  description: "Czytaj, słuchaj i odkrywaj. Opowieści, w których dziecko jest bohaterem — w jego własnym tempie.",
+  title: "Czytaki — Ze zdjęcia do własnej książeczki",
+  description: "Wgraj zdjęcie dziecka, pupila lub kogoś bliskiego. Stwórz spersonalizowany komiks albo bajkę i zamów gotowy PDF na e-mail.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

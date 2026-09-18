@@ -1,0 +1,11 @@
+import {z} from "zod";
+export const productSchema=z.object({name:z.string().trim().min(1).max(30),subject:z.enum(["child","pet","person"]),format:z.enum(["comic","story","fairytale"]),world:z.enum(["forest","space","ocean"]),style:z.enum(["storybook","comic","watercolor"]),age:z.enum(["3-5","6-8","9-12"]),dedication:z.string().trim().max(200),consent:z.literal(true)});
+export type ProductInput=z.infer<typeof productSchema>;
+export const formats={comic:"Komiks",story:"Opowiadanie",fairytale:"Bajka"};
+export const worlds={forest:"Magiczny las",space:"Kosmiczna wyprawa",ocean:"Podwodny świat"};
+export const styles={storybook:"Książkowa ilustracja",comic:"Kolorowy komiks",watercolor:"Miękka akwarela"};
+export const bookSchema=z.object({title:z.string().min(3).max(70),summary:z.string().min(10).max(220),character:z.string().min(10).max(700),scenes:z.array(z.object({title:z.string().min(1).max(50),text:z.string().min(10).max(550),imagePrompt:z.string().min(20).max(1600)})).length(6)});
+export type Book=z.infer<typeof bookSchema>;
+export type OrderView={id:string;status:string;generated:number;title?:string;summary?:string;previewText?:string;name:string;format:ProductInput["format"];amount:number;currency:string;email?:string;error?:string;paymentStatus:string;deliveryStatus:string;};
+export type ServiceConfig={generation:boolean;checkout:boolean;amount:number;currency:string;};
+
