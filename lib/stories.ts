@@ -1,0 +1,48 @@
+export type World = "forest" | "river" | "pets";
+export type Story = { id: string; name: string; pet: string; world: World; level: number; createdAt: string; page: number; choice: number | null; complete: boolean };
+export const WORLDS = {
+ forest: { title: "Tajemnica leśnego światła", label: "Magiczny las", subtitle: "O odwadze i pomaganiu", color: "mint" },
+ river: { title: "Most do małych wielkich przygód", label: "Nad rzeką", subtitle: "O współpracy i pomysłowości", color: "blue" },
+ pets: { title: "Przyjaciel na czterech łapach", label: "Łapka i spółka", subtitle: "O przyjaźni i trosce", color: "peach" },
+};
+export const LEVELS = ["Pierwsze słowa", "Krótkie zdania", "Czytam śmiało"];
+export const SCENE_TITLES = ["Początek przygody", "Niezwykłe spotkanie", "Twój wybór", "Nowa ścieżka", "Razem możemy więcej", "Mały wielki finał"];
+export function newStory(name = "Alex", pet = "Figo", world: World = "forest", level = 1): Story {
+ return { id: crypto.randomUUID(), name, pet, world, level, createdAt: new Date().toISOString(), page: 0, choice: null, complete: false };
+}
+export function sceneText(s: Story, page = s.page, level = s.level): string {
+ const n = s.name, p = s.pet, a = s.choice !== 1;
+ const scenes: Record<World, string[][]> = {
+ forest: [
+ [`To ${n}. To las. W lesie lśni małe światło. Co to?`, `${n} stoi na skraju lasu. Między drzewami miga złote światło. Zaczyna się przygoda!`, `Na skraju lasu ${n} zauważa migoczące światełko. Wygląda jak maleńka gwiazda, która zgubiła drogę do nieba. Z pobliskiego dębu dobiega cichutkie pukanie.`],
+ [`To lis ${p}. Lis ma mapę. Na mapie jest dom.`, `Zza drzewa wychodzi lis ${p}. W łapkach trzyma mapę. — Pomożesz mi znaleźć dom świetlików? — pyta.`, `Z paproci wyłania się lis ${p} z pogniecioną mapą. — Świetliki zgubiły swój dom — wyjaśnia. — Wiem, że jest za wielkim dębem, ale nie umiem odczytać tej mapy. Pomożesz?`],
+ [`Są dwie drogi. Tu jest mech. Tam jest strumyk. Którą wybierasz?`, `Ścieżka rozdziela się na dwie. Jedna prowadzi po miękkim mchu. Druga biegnie obok strumyka. Ty wybierasz!`, `Przy starym dębie ścieżka rozwidla się. Na lewo rośnie miękki mech, na którym błyszczą złote drobinki. Z prawej słychać pogodny szmer strumyka. Którym tropem podążycie?`],
+ [a ? `Mech jest miękki. ${p} widzi blask. To ślad!` : `Woda szumi. ${p} widzi mostek. Za nim jest blask!`, a ? `Na mchu błyszczą złote ślady. ${n} i ${p} idą za nimi. Ślady prowadzą prosto do wielkiego drzewa.` : `${n} i ${p} idą brzegiem strumyka. Za małym mostkiem widać drzewo pełne złotych iskier.`, a ? `Miękki mech tłumi kroki. ${n} dostrzega na nim maleńkie złote ślady, jakby ktoś rozsypał gwiezdny pył. ${p} zerka na mapę: — Jesteśmy coraz bliżej!` : `Strumyk nuci cichą melodię. ${n} zauważa mały mostek, a za nim migoczące drzewo. ${p} sprawdza mapę: — To musi być tutaj! Wspólnie przechodzicie po stabilnym mostku.`],
+ [`Tu są drzwi. A tu klucz! ${n} otwiera dom.`, `W drzewie są małe drzwi. ${p} znajduje klucz pod liściem. ${n} otwiera drzwi. W środku czeka ciepłe światło.`, `U stóp dębu kryją się drzwi z klamką w kształcie liścia. ${p} znajduje kluczyk, a ${n} ostrożnie przekręca go w zamku. Drzwi otwierają się, uwalniając ciepły blask i zapach leśnych kwiatów.`],
+ [`Świetliki są w domu! ${p} się cieszy. ${n} też. Razem jest raźniej.`, `Świetliki wracają do swojego domu. — Dziękujemy! — migoczą radośnie. ${n} i ${p} wiedzą już, że razem łatwiej znaleźć drogę.`, `Świetliki wirują w radosnym tańcu. Ich dom znów rozświetla las, a ${p} składa mapę na pamiątkę. ${n} odkrywa, że odwaga nie zawsze oznacza wielkie czyny. Czasem wystarczy komuś pomóc i zrobić pierwszy krok.`],
+ ],
+ river: [
+ [`${n} idzie nad rzekę. Jest tu ${p}. Woda lśni.`, `${n} i ${p} wędrują nad rzekę. Na drugim brzegu widać ogród pełen kwiatów. Jak się do niego dostać?`, `${n} i ${p} odkrywają nad rzeką tabliczkę: „Ogród dobrych pomysłów”. Po drugiej stronie rosną niezwykłe kwiaty. Niestety mały mostek potrzebuje naprawy.`],
+ [`To bóbr. Bóbr ma deski. Chce zrobić most.`, `Przy brzegu pracuje bóbr. Ma deski, ale zgubił swój plan. — Może razem wymyślimy, co zrobić? — pyta.`, `Bóbr budowniczy rozkłada na trawie deski. — Chcę naprawić most, ale wiatr porwał mój plan — wzdycha. ${n} rozgląda się uważnie, a ${p} już szuka śladów.`],
+ [`Szukamy planu? Czy pytamy sowę? Wybierz!`, `Możecie poszukać planu przy drzewie albo zapytać mądrą sowę. Każdy pomysł warto sprawdzić. Co wybierasz?`, `Na gałęzi szeleści skrawek papieru, a na pobliskim pniu siedzi sowa. Czy najpierw poszukacie zagubionego planu, czy poprosicie sowę o radę?`],
+ [a ? `Plan jest pod drzewem! ${p} go ma.` : `Sowa wie! Plan jest pod drzewem.`, a ? `${p} znajduje plan pod drzewem. ${n} zanosi go bobrowi. Teraz każdy wie, co trzeba zrobić.` : `Sowa wskazuje drzewo. Tam leży plan! ${n} i ${p} dziękują sowie za pomoc.`, a ? `${p} wypatruje skrawek papieru w trawie. To zaginiony plan! ${n} wygładza kartkę, na której narysowano wszystkie części mostu. Dobry pomysł zaczął się od uważnego patrzenia.` : `Sowa obraca głowę i wskazuje skrzydłem pobliskie drzewo. — Wiatr zaniósł tam kartkę — mówi. ${n} i ${p} odnajdują plan i dziękują za cenną wskazówkę.`],
+ [`Bóbr buduje. My czekamy. Most jest gotowy!`, `Bóbr naprawia most. ${n} i ${p} czekają w bezpiecznym miejscu. Gdy wszystko jest gotowe, bóbr zaprasza ich do przejścia.`, `Bóbr umacnia deski, a ${n} i ${p} kibicują mu z brzegu. Po dokładnym sprawdzeniu konstrukcji budowniczy uśmiecha się: — Teraz możecie przejść. Wasza pomoc naprawdę się przydała!`],
+ [`Ogród pachnie. ${n} się cieszy. Dobry pomysł łączy!`, `W ogrodzie pachną kwiaty. ${n}, ${p} i bóbr siadają razem w cieniu. Dzięki współpracy przygoda ma piękny finał.`, `Za mostem czeka ogród pachnący miętą i poziomkami. ${n} zauważa, że każdy pomógł na swój sposób. ${p} wypatrzył ślady, sowa podzieliła się wiedzą, a bóbr zbudował most. Razem stworzyli coś, czego nie zrobiłaby jedna osoba.`],
+ ],
+ pets: [
+ [`To ${n}. A to pies ${p}. Dziś jest ich dzień!`, `${n} spędza popołudnie z psem o imieniu ${p}. Razem z dorosłym opiekunem szykują małą przygodę.`, `Dziś ${n} planuje spokojne popołudnie z psem o imieniu ${p}. Dorosły opiekun proponuje, by najpierw zastanowić się, czego potrzebuje czworonożny przyjaciel.`],
+ [`${p} ma miskę. W misce jest woda. Pies pije.`, `Opiekun nalewa świeżej wody do miski. ${p} pije, a ${n} czeka spokojnie. Każdy przyjaciel potrzebuje chwili dla siebie.`, `Zanim zacznie się zabawa, opiekun sprawdza miskę z wodą. ${n} obserwuje, jak ${p} spokojnie pije. Troska to także proste codzienne czynności i cierpliwe czekanie.`],
+ [`Spacer czy zabawa? Co dziś zrobimy razem?`, `Opiekun proponuje spokojny spacer albo zabawę w szukanie zabawki. ${p} jest gotowy na wspólny czas. Co wybierasz?`, `Dorosły opiekun ma dwie propozycje: krótki spacer z czasem na wąchanie albo spokojną zabawę w odnajdywanie ulubionej zabawki. Którą przygodę wybierzecie?`],
+ [a ? `Idziemy razem. ${p} wącha trawę. Nie spieszymy się.` : `Gdzie zabawka? ${p} szuka. Jest! Brawo!`, a ? `Dorosły prowadzi psa na smyczy. ${n} idzie obok. ${p} wącha trawę i poznaje nowe zapachy. Nikt go nie pogania.` : `Opiekun chowa zabawkę w łatwym miejscu. ${p} znajduje ją nosem. ${n} cieszy się z małego sukcesu przyjaciela.`, a ? `Na spacerze dorosły trzyma smycz, a ${n} idzie u jego boku. ${p} długo obwąchuje kępkę trawy. — Dla psa to jak czytanie ciekawej książki — wyjaśnia opiekun. Macie czas, żeby się zatrzymać.` : `Opiekun chowa ulubioną zabawkę za poduszką. ${p} rusza jej tropem, kierując się nosem. Kiedy ją znajduje, ${n} chwali przyjaciela. W tej zabawie liczy się radość ze wspólnego odkrywania.`],
+ [`${p} idzie na koc. Chce odpocząć. Czekamy.`, `${p} kładzie się na swoim kocu. To pora odpoczynku. ${n} zostawia mu przestrzeń i siada z książką obok opiekuna.`, `Po przygodzie ${p} sam wybiera swój koc. ${n} ma ochotę na jeszcze jedną zabawę, ale opiekun przypomina, że odpoczynek też jest ważny. Przyjaźń oznacza szanowanie potrzeb drugiej istoty.`],
+ [`Dobry dzień! Woda, zabawa i sen. ${p} ma przyjaciela.`, `${n} wie już, że troska to woda, wspólny czas i spokojny odpoczynek. ${p} zasypia na kocu. Jutro czeka ich nowa przygoda.`, `Wieczorem ${n} opowiada o trzech małych gestach: świeżej wodzie, wspólnej przygodzie i uszanowaniu odpoczynku. ${p} drzemie spokojnie. Dbanie o przyjaciela nie wymaga magii — wystarczą uwaga i pomoc dorosłego.`],
+ ]};
+ return scenes[s.world][Math.max(0,Math.min(5,page))][Math.max(0,Math.min(2,level))];
+}
+export function choices(world: World): [string,string] { return world === "forest" ? ["Idziemy ścieżką po mchu", "Sprawdzamy brzeg strumyka"] : world === "river" ? ["Szukamy zgubionego planu", "Pytamy sowę o wskazówkę"] : ["Wyruszamy na spokojny spacer", "Szukamy ulubionej zabawki"]; }
+export function quiz(world: World) {return world === "pets" ? {question:"Co robimy, kiedy przyjaciel odpoczywa?",answers:["Dajemy mu spokojnie odpocząć", "Od razu zaczynamy nową zabawę"],correct:0} : world === "river" ? {question:"Co pomogło naprawić most?",answers:["Każdy działał zupełnie sam", "Współpraca i dobre pomysły"],correct:1} : {question:"Komu pomogli bohaterowie?",answers:["Świetlikom odnaleźć dom", "Smokowi szukać skarbu"],correct:0};}
+export function isStory(value: unknown): value is Story {
+ if(!value || typeof value!=="object") return false;
+ const s=value as Story;
+ return typeof s.id==="string" && typeof s.name==="string" && s.name.length<=30 && typeof s.pet==="string" && s.pet.length<=30 && Object.hasOwn(WORLDS,s.world) && Number.isInteger(s.level) && s.level>=0 && s.level<=2 && Number.isInteger(s.page) && s.page>=0 && s.page<=5 && [null,0,1].includes(s.choice) && typeof s.complete==="boolean" && typeof s.createdAt==="string";
+}
