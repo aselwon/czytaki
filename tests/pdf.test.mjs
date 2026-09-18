@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile,writeFile} from 'node:fs/promises';
 import {PDFDocument} from 'pdf-lib';
 import {createBookPdf} from '../lib/server/pdf.ts';
-import {productSchema,bookSchema} from '../lib/product.ts';
+import {productSchema,bookSchema,normalizeGeneratedBook} from '../lib/product.ts';
 test('book contains eight pages, Polish text and a dedicated ending',async()=>{
  const font=new Uint8Array(await readFile(new URL('../lib/assets/LiberationSans-Regular.ttf',import.meta.url)));
  const image=new Uint8Array(await readFile(new URL('../public/forest.png',import.meta.url)));
@@ -31,4 +31,12 @@ test('comic uses five readable Polish beats on every illustrated page',async()=>
 test('the order schema rejects missing consent and unsupported formats',()=>{
  assert.equal(productSchema.safeParse({name:'Ada',consent:false}).success,false);
  assert.equal(productSchema.safeParse({name:'Ada',subject:'child',format:'video',world:'forest',style:'storybook',age:'6-8',dedication:'',consent:true}).success,false);
+});
+test('overlong AI comic copy is shortened without dropping the five panels',()=>{
+ const raw={title:'Tajemnicza przygoda',summary:'Krótki opis pięknej przygody.',character:'A cheerful child in a green jacket.',scenes:Array.from({length:6},()=>({title:'Początek',text:'Dziecko wyrusza na pełną odkryć przygodę.',imagePrompt:'A child begins a colorful adventure in the garden.',panels:Array.from({length:5},()=>({visual:'A child explores a sunny garden full of surprises. '.repeat(7),line:'Nie mogę uwierzyć, ile niespodzianek czeka tutaj na nas! '.repeat(2),kind:'dialogue'}))}))};
+ const book=normalizeGeneratedBook(raw);
+ assert.equal(book.scenes.length,6);
+ assert.ok(book.scenes.every(scene=>scene.panels.length===5&&scene.panels.every(panel=>panel.line.length<=55&&panel.visual.length<=220)));
+ assert.equal(bookSchema.safeParse(book).success,true);
+ assert.throws(()=>normalizeGeneratedBook({...raw,scenes:[]}));
 });
