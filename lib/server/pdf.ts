@@ -2,14 +2,13 @@ import {PDFDocument,rgb,type PDFFont,type PDFPage,type PDFImage} from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type {Book,ProductInput,ComicPanel} from "../product";
 import {comicLayout,type BubbleSlot} from "./comic-layouts.ts";
-import type {LetteringBox} from "../comic-layouts.ts";
 
 const green=rgb(.09,.28,.22),muted=rgb(.39,.46,.36),cream=rgb(.99,.98,.94),ink=rgb(.055,.075,.075),white=rgb(1,1,1),caption=rgb(1,.97,.78);
 export function wrapText(text:string,font:PDFFont,size:number,width:number){const words=text.replace(/[\r\n]+/g," ").trim().split(/\s+/),lines:string[]=[];let line="";for(const word of words){if(font.widthOfTextAtSize(word,size)>width){if(line){lines.push(line);line="";}let part="";for(const char of word){if(font.widthOfTextAtSize(part+char,size)>width){lines.push(part);part=char;}else part+=char;}line=part;continue;}const next=line?line+" "+word:word;if(font.widthOfTextAtSize(next,size)>width){lines.push(line);line=word;}else line=next;}if(line)lines.push(line);return lines;}
 function block(page:PDFPage,text:string,font:PDFFont,x:number,y:number,width:number,size:number,maxHeight:number,color=green){let lines=wrapText(text,font,size,width);while(lines.length*size*1.5>maxHeight&&size>13){size-=.5;lines=wrapText(text,font,size,width);}if(lines.length*size*1.5>maxHeight)throw new Error("PDF text exceeds layout bounds");for(const line of lines){page.drawText(line,{x,y,size,font,color});y-=size*1.5;}return y;}
 
-function drawBubble(page:PDFPage,panel:ComicPanel,font:PDFFont,slot:BubbleSlot){
- const width=slot.width,height=slot.height,x=47+slot.x,y=59+735-slot.y-height;
+function drawBubble(page:PDFPage,panel:ComicPanel,font:PDFFont,slot:BubbleSlot,canvas={x:47,y:59,width:500,height:735}){
+ const width=slot.width/500*canvas.width,height=slot.height/750*canvas.height,x=canvas.x+slot.x/500*canvas.width,y=canvas.y+canvas.height-(slot.y+slot.height)/750*canvas.height;
  const isDialogue=panel.kind==="dialogue";
  if(isDialogue)page.drawEllipse({x:x+width/2,y:y+height/2,xScale:width/2,yScale:height/2,color:white,borderColor:ink,borderWidth:1.8});
  else page.drawRectangle({x,y,width,height,color:caption,borderColor:ink,borderWidth:1.8});
@@ -25,21 +24,14 @@ export function fitComicLettering(text:string,font:PDFFont,width:number,height:n
  if(lines.length*size*1.2>height)throw new Error("Comic lettering does not fit safely inside its empty bubble");
  return {size,lines,lineHeight:size*1.2};
 }
-function drawLettering(page:PDFPage,panel:ComicPanel,font:PDFFont,box:LetteringBox){
- const x=52.5+box.x*490,y=59+(1-box.y-box.height)*735,width=box.width*490,height=box.height*735;
- const {size,lines,lineHeight}=fitComicLettering(panel.line,font,width,height);
- const top=y+(height+lines.length*lineHeight)/2-lineHeight*.78;
- lines.forEach((line,i)=>page.drawText(line,{x:x+(width-font.widthOfTextAtSize(line,size))/2,y:top-i*lineHeight,font,size,color:ink}));
-}
 function drawComicPage(page:PDFPage,art:PDFImage,scene:Book["scenes"][number],font:PDFFont,index:number,templated:boolean){
  page.drawRectangle({x:0,y:0,width:595.28,height:841.89,color:white});
  const title=scene.title.toLocaleUpperCase("pl-PL");let titleSize=15;while(font.widthOfTextAtSize(title,titleSize)>455&&titleSize>10)titleSize-=.5;
  page.drawText(title,{x:47,y:811,font,size:titleSize,color:ink});
  page.drawText(String(index+1)+" / 6",{x:516,y:812,font,size:10,color:muted});
  if(templated){
-  if(scene.lettering?.length!==5)throw new Error("Missing verified bubble interiors");
   page.drawImage(art,{x:52.5,y:59,width:490,height:735});
-  scene.lettering.forEach((box,i)=>drawLettering(page,scene.panels![i],font,box));
+  comicLayout(scene.comicTemplate??index).bubbles.forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot,{x:52.5,y:59,width:490,height:735}));
  }else{
  page.drawImage(art,{x:47,y:59,width:500,height:735});
  page.drawRectangle({x:47,y:59,width:500,height:735,borderColor:ink,borderWidth:1.5});

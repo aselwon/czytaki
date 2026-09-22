@@ -2,7 +2,7 @@ import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
 import {generateBook,generateIllustration} from "@/lib/server/ai";
 import {createBookPdf} from "@/lib/server/pdf";
-import {detectBubbleInteriors} from "@/lib/server/bubble-detection";
+import {comicLetteringBoxes} from "@/lib/comic-layouts";
 import {sceneImageKey,sceneImageType,templatePrefix} from "@/lib/server/comic-assets";
 import {apiError,findOrder,HttpError,infrastructure,ownOrder,runtime,sameOrigin,settings,story,view} from "@/lib/server/runtime";
 
@@ -28,8 +28,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
    const first=r.generated>0?await BUCKET.get(sceneImageKey(id,b,0)):null;
    const result=await generateIllustration(p,b,r.generated,new Uint8Array(await photo.arrayBuffer()),r.photo_type!,first?new Uint8Array(await first.arrayBuffer()):undefined);
    if(b.comicLayoutVersion===1){
-    try{b.scenes[r.generated].lettering=detectBubbleInteriors(result,b.scenes[r.generated].comicTemplate!);}
-    catch(e){console.error("Comic bubble validation failed",e instanceof Error?e.message:"Unknown");throw new HttpError(503,"Ilustracja nie ma pięciu czytelnych, pustych dymków. Kliknij „Kontynuuj generowanie”, aby ponowić tę stronę.");}
+    b.scenes[r.generated].lettering=comicLetteringBoxes(b.scenes[r.generated].comicTemplate!);
    }
    await BUCKET.put(sceneImageKey(id,b,r.generated),result,{httpMetadata:{contentType:sceneImageType(b)}});
    await DB.prepare("UPDATE orders SET generated=generated+1,book=? WHERE id=? AND lock_token=?").bind(JSON.stringify(b),id,lock).run();

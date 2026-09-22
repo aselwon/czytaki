@@ -1,10 +1,9 @@
 import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
 import {bookSchema} from "@/lib/product";
-import {comicTemplateIndex} from "@/lib/comic-layouts";
+import {comicLetteringBoxes,comicTemplateIndex} from "@/lib/comic-layouts";
 import {generateIllustration,planLegacyComic} from "@/lib/server/ai";
 import {createBookPdf} from "@/lib/server/pdf";
-import {detectBubbleInteriors} from "@/lib/server/bubble-detection";
 import {sceneImageKey,sceneImageType,templatePrefix} from "@/lib/server/comic-assets";
 import {apiError,findOrder,HttpError,infrastructure,ownOrder,runtime,salesReady,sameOrigin,settings,story,view} from "@/lib/server/runtime";
 
@@ -37,8 +36,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
     const first=next?await BUCKET.get(sceneImageKey(id,b,0)):null;
     if(!original)throw new HttpError(503,"Brakuje pierwotnej ilustracji do przeróbki.");
     const result=await generateIllustration(p,b,next,new Uint8Array(await original.arrayBuffer()),sceneImageType(originalBook),first?new Uint8Array(await first.arrayBuffer()):undefined,"illustration");
-    try{b.scenes[next].lettering=detectBubbleInteriors(result,b.scenes[next].comicTemplate!);}
-    catch(e){console.error("Comic bubble validation failed",e instanceof Error?e.message:"Unknown");throw new HttpError(503,"Ta ilustracja wymaga poprawienia pustych dymków. Kliknij ponownie „Odśwież komiks”, aby ponowić tylko tę stronę.");}
+    b.scenes[next].lettering=comicLetteringBoxes(b.scenes[next].comicTemplate!);
     await BUCKET.put(sceneImageKey(id,b,next),result,{httpMetadata:{contentType:"image/jpeg"}});
     await BUCKET.put(`${prefix}/book.json`,JSON.stringify(b),{httpMetadata:{contentType:"application/json"}});
     progress=next+1;

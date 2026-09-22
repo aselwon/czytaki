@@ -7,7 +7,7 @@ import jpeg from 'jpeg-js';
 import UPNG from '@pdf-lib/upng';
 import {detectBubbleInteriors} from '../lib/server/bubble-detection.ts';
 import {fitComicLettering} from '../lib/server/pdf.ts';
-import {comicLayoutCount,comicTemplateIndex} from '../lib/comic-layouts.ts';
+import {comicLayoutCount,comicTemplateIndex,comicLetteringBoxes} from '../lib/comic-layouts.ts';
 import {sceneImageKey} from '../lib/server/comic-assets.ts';
 import {letteringBoxSchema} from '../lib/product.ts';
 
@@ -44,4 +44,14 @@ test('templates rotate across books and asset paths preserve older artwork',()=>
  assert.equal(sceneImageKey('order',{comicLayoutVersion:1},0),'orders/order/comic-templates-v1/scene-0.jpg');
  assert.equal(sceneImageKey('order',null,0),'orders/order/scene-0.jpg');
  assert.equal(letteringBoxSchema.safeParse({x:.9,y:.1,width:.3,height:.1}).success,false);
+});
+test('runtime lettering boxes are deterministic and always fit the page',()=>{
+ for(let index=0;index<comicLayoutCount;index++){
+  const boxes=comicLetteringBoxes(index);
+  assert.equal(boxes.length,5);
+  for(const [i,box] of boxes.entries()){
+   assert.equal(letteringBoxSchema.safeParse(box).success,true);
+   if(i)assert.ok(box.y>boxes[i-1].y+boxes[i-1].height);
+  }
+ }
 });

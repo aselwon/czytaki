@@ -18,9 +18,11 @@ export function comicLayout(index:number):ComicLayout{return comicLayouts[((inde
 export function comicTemplateIndex(seed:string,page:number){let hash=0;for(const char of seed)hash=(Math.imul(hash,31)+char.charCodeAt(0))|0;return ((hash>>>0)+page)%comicLayoutCount;}
 export function comicLayoutPrompt(index:number){
  const layout=comicLayout(index);
- return `${layout.composition} The LAST reference is the actual page template, NOT a character reference. Replace the pale blue background with finished continuous artwork. Preserve its EXACTLY FIVE empty white speech bubbles, their closed dark outlines, size, placement and order. Keep their interiors pure white and completely blank. Place the hero and all important faces, paws, hands and actions OUTSIDE the bubble silhouettes. Reading order is top to bottom. No white gutters, rectangular frames, panel grids or tiled pictures. Do not copy layout, frames or lettering from the character references.`;
+ const spaces=layout.bubbles.map((box,i)=>`zone ${i+1}: left ${Math.round(box.x/5)}%, top ${Math.round(box.y/7.5)}%, width ${Math.round(box.width/5)}%, height ${Math.round(box.height/7.5)}%`).join("; ");
+ return `${layout.name}: ${layout.composition} The application will overlay five opaque speech bubbles after generation. Reserve low-detail background in these zones: ${spaces}. Keep every face, head, hand, paw, character, important object and crucial action outside those zones. Draw NO speech bubbles, white blobs, borders, captions or text yourself. Reading order is top to bottom. No white gutters, rectangular frames, panel grids or tiled pictures.`;
 }
 // Normalized rectangles detected inside the actual empty bubbles. Both the PDF
 // and browser consume these rectangles rather than assuming the AI kept a grid.
 export type LetteringBox=BubbleSlot;
+export function comicLetteringBoxes(index:number):LetteringBox[]{return comicLayout(index).bubbles.map(box=>({x:box.x/500,y:box.y/750,width:box.width/500,height:box.height/750}));}
 export function templateTail(box:BubbleSlot){const direction=box.x+box.width/2<250?1:-1;const x=box.x+box.width*(direction===1?.68:.32),y=box.y+box.height*.87;return [[x-9,y],[x+9,y],[x+direction*23,y+28]];}

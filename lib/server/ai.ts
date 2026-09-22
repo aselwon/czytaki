@@ -4,7 +4,6 @@ import {normalizeGeneratedBook,formats,heroRoles,heroRolePrompts,styles,worlds,t
 import {HttpError,runtime} from "./runtime";
 import {comicLayoutPrompt as legacyLayoutPrompt} from "./comic-layouts.ts";
 import {comicLayoutPrompt,comicTemplateIndex,COMIC_LAYOUT_VERSION} from "../comic-layouts.ts";
-import {comicTemplateBytes} from "./comic-template-assets";
 
 const string={type:"string"};
 const panelSchema={type:"object",additionalProperties:false,required:["visual","line","kind"],properties:{visual:string,line:string,kind:{type:"string",enum:["dialogue","narration"]}}};
@@ -66,7 +65,7 @@ export async function generateIllustration(p:ProductInput,b:Book,index:number,re
   :"The FIRST reference is an earlier illustration from this very book. Preserve its main character's visible face, hair, clothes, proportions, or animal markings and species. The original photograph is unavailable; use the illustrated appearance faithfully.";
  const continuity=first?"The SECOND reference shows the established character design and style; keep it consistent across all five panels and all pages.":"Establish one consistent character design.";
  const comic=scene.panels?.length===5,templated=comic&&b.comicLayoutVersion===COMIC_LAYOUT_VERSION;
- if(templated){if(scene.comicTemplate===undefined)throw new Error("Missing comic template");body.append("image[]",new Blob([comicTemplateBytes(scene.comicTemplate) as BlobPart],{type:"image/png"}),"empty-bubble-page-template.png");}
+ if(templated&&scene.comicTemplate===undefined)throw new Error("Missing comic template");
  const panelBrief=comic?[
   "Create ONE full-bleed PORTRAIT CHILDREN'S COMIC PAGE with exactly FIVE DISTINCT sequential visual beats. Do not assemble a grid of separate pictures. Keep the SAME recognizable hero, outfit and setting in every beat, but show changing actions, expressions and camera distances. Use confident hand-inked lines, bright warm color and clear visual storytelling.",
   templated?comicLayoutPrompt(scene.comicTemplate!):legacyLayoutPrompt(index),

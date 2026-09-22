@@ -8,7 +8,7 @@ export default function ComicPreview({order,imageSrc}:{order:OrderView;imageSrc?
    <img src={imageSrc||`/api/orders/${order.id}/preview?v=${order.comicVersion||1}`} alt={`Wygenerowana ilustracja bohatera: ${order.name}`}/>
    {comic&&order.previewPanels?.map((panel,i)=>{
     const box=order.previewLettering?.[i];
-    if(templated)return box?<span key={i} className="comic-lettering" style={{left:`${box.x*100}%`,top:`${box.y*100}%`,width:`${box.width*100}%`,height:`${box.height*100}%`}}>{panel.line}</span>:null;
+    if(templated)return box?<span key={i} className={`comic-lettering ${panel.kind}`} style={{left:`${box.x*100}%`,top:`${box.y*100}%`,width:`${box.width*100}%`,height:`${box.height*100}%`}}>{panel.line}</span>:null;
     return <span key={i} className={`comic-text comic-text-${i} ${panel.kind}`}>{panel.line}</span>;
    })}
   </div>

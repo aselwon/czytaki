@@ -24,7 +24,7 @@ test('comic uses five readable Polish beats on every illustrated page',async()=>
   {visual:'The hero gently holds the glowing seed.',line:'Posadzę je tutaj!',kind:'dialogue'},
   {visual:'A tiny sprout appears under warm sunlight.',line:'To początek nowej przygody.',kind:'narration'}
  ];
- const book=bookSchema.parse({title:'Maja i sekret słonecznej polany',summary:'Pogodna opowieść o odwadze i trosce.',character:'A curious child exploring the meadow.',scenes:Array.from({length:6},(_,i)=>({title:'Rozdział '+(i+1),text:'Maja idzie za błękitnym ptaszkiem i odkrywa niezwykłe miejsce.',imagePrompt:'A colorful comic page showing Maja in a sunny meadow with a blue bird.',panels:beats}))});
+ const book=bookSchema.parse({title:'Maja i sekret słonecznej polany',summary:'Pogodna opowieść o odwadze i trosce.',character:'A curious child exploring the meadow.',comicLayoutVersion:1,scenes:Array.from({length:6},(_,i)=>({title:'Rozdział '+(i+1),text:'Maja idzie za błękitnym ptaszkiem i odkrywa niezwykłe miejsce.',imagePrompt:'A colorful comic page showing Maja in a sunny meadow with a blue bird.',panels:beats,comicTemplate:i%8}))});
  const bytes=await createBookPdf(book,settings,Array(6).fill(image),font);
  const pdf=await PDFDocument.load(bytes);assert.equal(pdf.getPageCount(),8);assert.equal(pdf.getTitle(),book.title);assert.ok(bytes.length<20*1024*1024);
  if(process.env.PDF_QA_PATH)await writeFile(process.env.PDF_QA_PATH,bytes);
