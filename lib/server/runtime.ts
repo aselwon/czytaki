@@ -16,7 +16,7 @@ export function settings(r:OrderRow):ProductInput{return productSchema.parse(JSO
 export function story(r:OrderRow):Book|null{return r.book?bookSchema.parse(JSON.parse(r.book)):null;}
 export function view(r:OrderRow):OrderView{
  const p=settings(r),b=story(r),comicVersion=b?.comicLayoutVersion===1?3:r.pdf_key?.includes("/comic-remake/")?2:1;
- const ownerPreview=(r.id===runtime().DEMO_PDF_ORDER_ID||r.id===runtime().PDF_PREVIEW_ORDER_ID)&&!salesReady();
+ const ownerPreview=!salesReady();
  const previewLettering=b?.comicLayoutVersion===1&&b.scenes[0].comicTemplate!==undefined?comicLetteringBoxes(b.scenes[0].comicTemplate):b?.scenes[0].lettering;
  return{id:r.id,status:r.status,generated:r.generated,name:p.name,format:p.format,title:b?.title,summary:b?.summary,previewText:b?.scenes[0].text,previewPanels:b?.scenes[0].panels,previewLettering,comicLayoutVersion:b?.comicLayoutVersion,previewAvailable:r.status==="ready"&&(r.payment_status==="paid"||ownerPreview),remakeAvailable:ownerPreview&&r.payment_status==="unpaid"&&r.status==="ready"&&p.format==="comic"&&comicVersion<3,comicVersion,amount:r.amount,currency:r.currency,paymentStatus:r.payment_status,deliveryStatus:r.delivery_status,email:r.payment_status==="paid"?r.email||undefined:undefined};
 }
