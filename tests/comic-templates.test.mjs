@@ -42,6 +42,7 @@ test('templates rotate across books and asset paths preserve older artwork',()=>
  assert.equal(indices.size,8);
  assert.equal(sceneImageKey('order',null,0,'orders/order/comic-remake/book.pdf'),'orders/order/comic-remake/scene-0.jpg');
  assert.equal(sceneImageKey('order',{comicLayoutVersion:1},0),'orders/order/comic-templates-v1/scene-0.jpg');
+ assert.equal(sceneImageKey('order',{comicLayoutVersion:2},0),'orders/order/comic-overlay-v2/scene-0.jpg');
  assert.equal(sceneImageKey('order',null,0),'orders/order/scene-0.jpg');
  assert.equal(letteringBoxSchema.safeParse({x:.9,y:.1,width:.3,height:.1}).success,false);
 });

@@ -1,9 +1,9 @@
 import type {OrderView} from "@/lib/product";
 
-export default function ComicPreview({order,imageSrc}:{order:OrderView;imageSrc?:string}){
+export default function ComicPreview({order,imageSrc,embeddedBubbles=false}:{order:OrderView;imageSrc?:string;embeddedBubbles?:boolean}){
  const comic=order.format==="comic"&&!!order.previewPanels;
- const templated=comic&&order.comicLayoutVersion===1;
- return <div className={`preview-page ${comic?"comic-preview":""} ${templated?"comic-template-preview":""}`}>
+ const templated=comic&&!!order.comicLayoutVersion;
+ return <div className={`preview-page ${comic?"comic-preview":""} ${templated?"comic-template-preview":""} ${embeddedBubbles?"embedded-bubbles":""}`}>
   <div className="preview-art">
    <img src={imageSrc||`/api/orders/${order.id}/preview?v=${order.comicVersion||1}`} alt={`Wygenerowana ilustracja bohatera: ${order.name}`}/>
    {comic&&order.previewPanels?.map((panel,i)=>{

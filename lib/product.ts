@@ -21,7 +21,7 @@ export const styles={storybook:"Książkowa ilustracja",comic:"Kolorowy komiks",
 export const comicPanelSchema=z.object({visual:z.string().min(8).max(220),line:z.string().min(2).max(55),kind:z.enum(["dialogue","narration"])});
 export type ComicPanel=z.infer<typeof comicPanelSchema>;
 export const letteringBoxSchema=z.object({x:z.number().min(0).max(1),y:z.number().min(0).max(1),width:z.number().positive().max(1),height:z.number().positive().max(1)}).refine(box=>box.x+box.width<=1&&box.y+box.height<=1);
-export const bookSchema=z.object({title:z.string().min(3).max(70),summary:z.string().min(10).max(220),character:z.string().min(10).max(700),comicLayoutVersion:z.literal(1).optional(),scenes:z.array(z.object({title:z.string().min(1).max(50),text:z.string().min(10).max(550),imagePrompt:z.string().min(20).max(1600),panels:z.array(comicPanelSchema).length(5).optional(),comicTemplate:z.number().int().min(0).max(7).optional(),lettering:z.array(letteringBoxSchema).length(5).optional()})).length(6)});
+export const bookSchema=z.object({title:z.string().min(3).max(70),summary:z.string().min(10).max(220),character:z.string().min(10).max(700),comicLayoutVersion:z.union([z.literal(1),z.literal(2)]).optional(),scenes:z.array(z.object({title:z.string().min(1).max(50),text:z.string().min(10).max(550),imagePrompt:z.string().min(20).max(1600),panels:z.array(comicPanelSchema).length(5).optional(),comicTemplate:z.number().int().min(0).max(7).optional(),lettering:z.array(letteringBoxSchema).length(5).optional()})).length(6)});
 export type Book=z.infer<typeof bookSchema>;
 // Structured outputs guarantee field types, but not the length limits used by the UI and PDF.
 // Shorten only oversized model text; malformed or missing content still fails validation.

@@ -12,6 +12,7 @@
 @font-face{font-family:ComicLettering;src:url("../lib/assets/LiberationSans-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
 .comic-template-preview .preview-art{border:0;border-radius:0;container-type:inline-size}
 .comic-template-preview .comic-lettering{position:absolute;display:flex;align-items:center;justify-content:center;padding:1.8cqw 3.2cqw;margin:0;background:#fff;border:2px solid #0e1313;border-radius:50%;box-shadow:0 1px 0 #0e131333;color:#0e1313;text-align:center;font:700 2.65cqw/1.15 ComicLettering,sans-serif;white-space:normal;overflow-wrap:anywhere}.comic-template-preview .comic-lettering.narration{background:#fff2b5;border-radius:3px}
+.comic-template-preview.embedded-bubbles .comic-lettering{padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;font-weight:400}.comic-template-preview.embedded-bubbles .comic-lettering.narration{background:transparent}
 .comic-template-link{display:inline-block;margin:-4px 0 20px;font-weight:800;font-size:15px;text-decoration:underline;text-underline-offset:4px}
 .comic-preview-download{width:100%;justify-content:center;margin:16px 0 0}
 .resume-card{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:18px 0;padding:18px 20px;border:2px solid #1b5b4f;border-radius:18px;background:#e9f6ef;color:#173f37}

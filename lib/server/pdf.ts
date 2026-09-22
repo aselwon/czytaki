@@ -1,7 +1,8 @@
 import {PDFDocument,rgb,type PDFFont,type PDFPage,type PDFImage} from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type {Book,ProductInput,ComicPanel} from "../product";
-import {comicLayout,type BubbleSlot} from "./comic-layouts.ts";
+import {comicLayout as legacyComicLayout,type BubbleSlot} from "./comic-layouts.ts";
+import {COMIC_LAYOUT_VERSION,comicLayout as overlayComicLayout} from "../comic-layouts.ts";
 
 const green=rgb(.09,.28,.22),muted=rgb(.39,.46,.36),cream=rgb(.99,.98,.94),ink=rgb(.055,.075,.075),white=rgb(1,1,1),caption=rgb(1,.97,.78);
 export function wrapText(text:string,font:PDFFont,size:number,width:number){const words=text.replace(/[\r\n]+/g," ").trim().split(/\s+/),lines:string[]=[];let line="";for(const word of words){if(font.widthOfTextAtSize(word,size)>width){if(line){lines.push(line);line="";}let part="";for(const char of word){if(font.widthOfTextAtSize(part+char,size)>width){lines.push(part);part=char;}else part+=char;}line=part;continue;}const next=line?line+" "+word:word;if(font.widthOfTextAtSize(next,size)>width){lines.push(line);line=word;}else line=next;}if(line)lines.push(line);return lines;}
@@ -24,18 +25,19 @@ export function fitComicLettering(text:string,font:PDFFont,width:number,height:n
  if(lines.length*size*1.2>height)throw new Error("Comic lettering does not fit safely inside its empty bubble");
  return {size,lines,lineHeight:size*1.2};
 }
-function drawComicPage(page:PDFPage,art:PDFImage,scene:Book["scenes"][number],font:PDFFont,index:number,templated:boolean){
+function drawComicPage(page:PDFPage,art:PDFImage,scene:Book["scenes"][number],font:PDFFont,index:number,layoutVersion:Book["comicLayoutVersion"]){
  page.drawRectangle({x:0,y:0,width:595.28,height:841.89,color:white});
  const title=scene.title.toLocaleUpperCase("pl-PL");let titleSize=15;while(font.widthOfTextAtSize(title,titleSize)>455&&titleSize>10)titleSize-=.5;
  page.drawText(title,{x:47,y:811,font,size:titleSize,color:ink});
  page.drawText(String(index+1)+" / 6",{x:516,y:812,font,size:10,color:muted});
- if(templated){
+ if(layoutVersion){
   page.drawImage(art,{x:52.5,y:59,width:490,height:735});
-  comicLayout(scene.comicTemplate??index).bubbles.forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot,{x:52.5,y:59,width:490,height:735}));
+  const layout=layoutVersion===COMIC_LAYOUT_VERSION?overlayComicLayout(scene.comicTemplate??index):legacyComicLayout(scene.comicTemplate??index);
+  layout.bubbles.forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot,{x:52.5,y:59,width:490,height:735}));
  }else{
  page.drawImage(art,{x:47,y:59,width:500,height:735});
  page.drawRectangle({x:47,y:59,width:500,height:735,borderColor:ink,borderWidth:1.5});
- comicLayout(index).bubbles.forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot));
+ legacyComicLayout(index).bubbles.forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot));
  }
  page.drawText("czytaki.",{x:47,y:27,font,size:12,color:ink});
 }
@@ -69,7 +71,7 @@ export async function createBookPdf(book:Book,p:ProductInput,images:Uint8Array[]
   cover.drawImage(art[0],{x:77,y:137,width:441,height:441});
   block(cover,"Mały bohater. Wielka przygoda.",font,42,88,511,15,30,muted);
  }
- for(let i=0;i<6;i++){const page=add(i+2);if(comic)drawComicPage(page,art[i],book.scenes[i],font,i,book.comicLayoutVersion===1);else drawStoryPage(page,art[i],book.scenes[i],font,p,i);}
+ for(let i=0;i<6;i++){const page=add(i+2);if(comic)drawComicPage(page,art[i],book.scenes[i],font,i,book.comicLayoutVersion);else drawStoryPage(page,art[i],book.scenes[i],font,p,i);}
  const end=add(8);
  block(end,"Ta historia jest dla Ciebie",font,55,720,485,34,140);
  block(end,p.dedication||("Dla "+p.name+". Niech ciekawość prowadzi Cię do kolejnych niezwykłych przygód."),font,55,565,485,23,290);

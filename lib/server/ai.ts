@@ -62,7 +62,7 @@ export async function generateIllustration(p:ProductInput,b:Book,index:number,re
  const scene=b.scenes[index];
  const character=referenceKind==="photo"
   ?"The FIRST reference is a photograph of the actual main character. Preserve visible facial features, hair, skin tone, or for animals species, fur colour and markings. Never replace the subject with a generic child or animal."
-  :"The FIRST reference is an earlier illustration from this very book. Preserve its main character's visible face, hair, clothes, proportions, or animal markings and species. The original photograph is unavailable; use the illustrated appearance faithfully.";
+  :"The FIRST reference is an earlier illustration from this very book. Preserve its main character's visible face, hair, clothes, proportions, or animal markings and species, but reconstruct the scene as fresh artwork. It may contain old speech bubbles, captions, white shapes or panel borders: treat all of them as contamination, remove them completely and fill their areas with continuous illustrated background. The original photograph is unavailable.";
  const continuity=first?"The SECOND reference shows the established character design and style; keep it consistent across all five panels and all pages.":"Establish one consistent character design.";
  const comic=scene.panels?.length===5,templated=comic&&b.comicLayoutVersion===COMIC_LAYOUT_VERSION;
  if(templated&&scene.comicTemplate===undefined)throw new Error("Missing comic template");
@@ -84,7 +84,7 @@ export async function generateIllustration(p:ProductInput,b:Book,index:number,re
  body.set("quality","medium");
  body.set("output_format","jpeg");
  body.set("output_compression","85");
- if(model==="gpt-image-1.5"||model==="gpt-image-1")body.set("input_fidelity","high");
+ if(model==="gpt-image-1.5"||model==="gpt-image-1")body.set("input_fidelity",referenceKind==="illustration"?"low":"high");
  const r=await openai("images/edits",body);
  const data=r.data?.[0]?.b64_json;
  if(typeof data!=="string"||data.length>12_000_000)throw new HttpError(503,"Nie udało się przygotować ilustracji.");
