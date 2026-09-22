@@ -48,6 +48,13 @@ test('the order schema rejects missing consent and unsupported formats',()=>{
  assert.equal(productSchema.safeParse({name:'Ada',consent:false}).success,false);
  assert.equal(productSchema.safeParse({name:'Ada',subject:'child',format:'video',world:'forest',style:'storybook',age:'6-8',dedication:'',consent:true}).success,false);
 });
+test('the order schema supports original hero archetypes and safe custom notes',()=>{
+ const parsed=productSchema.parse({name:'Maja',subject:'child',format:'comic',heroRole:'web',heroIdea:'',world:'city',style:'comic',age:'6-8',dedication:'',consent:true});
+ assert.equal(parsed.heroRole,'web');
+ assert.equal(parsed.world,'city');
+ assert.equal(productSchema.safeParse({...parsed,heroRole:'famous-franchise-character'}).success,false);
+ assert.equal(productSchema.safeParse({...parsed,heroIdea:'x'.repeat(121)}).success,false);
+});
 test('overlong AI comic copy is shortened without dropping the five panels',()=>{
  const raw={title:'Tajemnicza przygoda',summary:'Krótki opis pięknej przygody.',character:'A cheerful child in a green jacket.',scenes:Array.from({length:6},()=>({title:'Początek',text:'Dziecko wyrusza na pełną odkryć przygodę.',imagePrompt:'A child begins a colorful adventure in the garden.',panels:Array.from({length:5},()=>({visual:'A child explores a sunny garden full of surprises. '.repeat(7),line:'Nie mogę uwierzyć, ile niespodzianek czeka tutaj na nas! '.repeat(2),kind:'dialogue'}))}))};
  const book=normalizeGeneratedBook(raw);

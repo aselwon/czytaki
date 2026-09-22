@@ -1,8 +1,22 @@
 import {z} from "zod";
-export const productSchema=z.object({name:z.string().trim().min(1).max(30),subject:z.enum(["child","pet","person"]),format:z.enum(["comic","story","fairytale"]),world:z.enum(["forest","space","ocean"]),style:z.enum(["storybook","comic","watercolor"]),age:z.enum(["3-5","6-8","9-12"]),dedication:z.string().trim().max(200),consent:z.literal(true)});
+export const productSchema=z.object({name:z.string().trim().min(1).max(30),subject:z.enum(["child","pet","person"]),format:z.enum(["comic","story","fairytale"]),heroRole:z.enum(["original","web","sky","shadow","ice","magic","cosmic","speed","ocean_guardian","dragon","custom"]).default("original"),heroIdea:z.string().trim().max(120).default(""),world:z.enum(["forest","space","ocean","city","kingdom"]),style:z.enum(["storybook","comic","watercolor"]),age:z.enum(["3-5","6-8","9-12"]),dedication:z.string().trim().max(200),consent:z.literal(true)});
 export type ProductInput=z.infer<typeof productSchema>;
 export const formats={comic:"Komiks",story:"Opowiadanie",fairytale:"Bajka"};
-export const worlds={forest:"Magiczny las",space:"Kosmiczna wyprawa",ocean:"Podwodny świat"};
+export const heroRoles={original:"Własny bohater",web:"Pajęczy akrobata",sky:"Latający obrońca",shadow:"Nocny detektyw",ice:"Lodowa czarodziejka",magic:"Uczeń magii",cosmic:"Kosmiczny wojownik",speed:"Błyskawiczny bohater",ocean_guardian:"Strażnik oceanu",dragon:"Smoczy jeździec",custom:"Własny pomysł"};
+export const heroRolePrompts={
+ original:"an entirely original young adventurer with a distinctive outfit and talent invented for this story",
+ web:"an agile wall-climbing and web-slinging rescuer with an original color palette, mask shape, emblem and costume",
+ sky:"a flying super-strong protector with an original cape, emblem, costume silhouette and origin",
+ shadow:"a clever nighttime detective using original gadgets, stealth and deduction in a mysterious city",
+ ice:"a kind ice-and-snow sorcerer with original clothing, powers, kingdom and visual motifs",
+ magic:"a young spell learner in an original magical school with an original wand, outfit and creatures",
+ cosmic:"a brave cosmic guardian using an original energy power, suit, insignia and galactic setting",
+ speed:"a lightning-fast rescuer with an original suit, energy trail, symbol and source of power",
+ ocean_guardian:"a protector of the seas with original water powers, attire, companions and underwater realm",
+ dragon:"a courageous rider bonded with an original friendly dragon, gear, village and mythology",
+ custom:"a new hero inspired only by the broad themes in the customer's note, with an original identity, powers, outfit, emblem and world"
+};
+export const worlds={forest:"Magiczny las",space:"Kosmiczna wyprawa",ocean:"Podwodny świat",city:"Miasto bohaterów",kingdom:"Baśniowe królestwo"};
 export const styles={storybook:"Książkowa ilustracja",comic:"Kolorowy komiks",watercolor:"Miękka akwarela"};
 export const comicPanelSchema=z.object({visual:z.string().min(8).max(220),line:z.string().min(2).max(55),kind:z.enum(["dialogue","narration"])});
 export type ComicPanel=z.infer<typeof comicPanelSchema>;

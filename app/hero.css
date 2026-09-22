@@ -1,0 +1,16 @@
+.hero-choice { margin-top: 24px; }
+.choice-hint { margin: -4px 0 12px; color: #7a8773; font-size: 12px; line-height: 1.5; }
+.hero-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.hero-grid label { display: grid; grid-template-columns: 14px 34px 1fr; align-items: center; gap: 8px; min-height: 58px; padding: 10px; border: 1px solid #dce5d7; border-radius: 13px; cursor: pointer; font-size: 13px; font-weight: 650; line-height: 1.25; transition: .18s ease; }
+.hero-grid label:hover { transform: translateY(-1px); border-color: #a7c8a0; }
+.hero-grid label.selected { border-color: #6fa772; background: linear-gradient(135deg, #edf7e9, #f9f4dd); color: #255b40; box-shadow: 0 4px 14px #376b4420; }
+.hero-grid button { width: 14px; height: 14px; }
+.hero-emoji { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #f2f5ed; font-size: 19px; }
+.hero-grid label.selected .hero-emoji { background: #fff; }
+.hero-idea { margin: -10px 0 13px; }
+.original-note { display: flex; align-items: flex-start; gap: 8px; margin: -9px 0 23px; padding: 10px 12px; border-radius: 10px; background: #f4f8f1; color: #66785e; font-size: 12px; line-height: 1.55; }
+.original-note svg { flex: none; margin-top: 1px; color: #4c805e; }
+
+@media (max-width: 520px) {
+  .hero-grid { grid-template-columns: 1fr; }
+}
