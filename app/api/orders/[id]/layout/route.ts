@@ -54,7 +54,11 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
    images.push(new Uint8Array(await art.arrayBuffer()));
   }
   const fontBytes=new Uint8Array(Buffer.from(fontUrl.split(",")[1],"base64"));
-  const pdf=await createBookPdf(b,p,images,fontBytes);
+  let pdf:Uint8Array;
+  try{pdf=await createBookPdf(b,p,images,fontBytes);}catch(e){
+   if(e instanceof Error&&e.message==="Comic bubble text exceeds bounds")throw new HttpError(400,"Tekst nie mieści się w jednym z dymków. Powiększ dymek albo skróć wypowiedź.");
+   throw e;
+  }
   if(pdf.length>20*1024*1024)throw new HttpError(503,"Plik PDF jest zbyt duży.");
   const key=`${templatePrefix(id,2)}/edited-${crypto.randomUUID()}.pdf`;
   await BUCKET.put(key,pdf,{httpMetadata:{contentType:"application/pdf"}});

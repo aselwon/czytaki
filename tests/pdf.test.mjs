@@ -4,7 +4,7 @@ import {readFile,writeFile} from 'node:fs/promises';
 import {PDFDocument} from 'pdf-lib';
 import {comicSlots,createBookPdf} from '../lib/server/pdf.ts';
 import {comicLayout,comicLayoutCount,comicLayoutPrompt} from '../lib/comic-layouts.ts';
-import {productSchema,bookSchema,normalizeGeneratedBook} from '../lib/product.ts';
+import {productSchema,bookSchema,comicEditorSceneSchema,normalizeGeneratedBook} from '../lib/product.ts';
 test('book contains eight pages, Polish text and a dedicated ending',async()=>{
  const font=new Uint8Array(await readFile(new URL('../lib/assets/LiberationSans-Regular.ttf',import.meta.url)));
  const image=new Uint8Array(await readFile(new URL('../public/forest.png',import.meta.url)));
@@ -69,4 +69,10 @@ test('overlong AI comic copy is shortened without dropping the five panels',()=>
  assert.ok(book.scenes.every(scene=>scene.panels.length===5&&scene.panels.every(panel=>panel.line.length<=55&&panel.visual.length<=220)));
  assert.equal(bookSchema.safeParse(book).success,true);
  assert.throws(()=>normalizeGeneratedBook({...raw,scenes:[]}));
+});
+test('manual comic editing accepts longer copy while generated copy stays concise',()=>{
+ const longLine='To trochę dłuższa wypowiedź wpisana ręcznie, która nadal może zmieścić się w dużym dymku.';
+ const scene={title:'Plansza',comicTemplate:0,panels:Array.from({length:5},()=>({visual:'A clear visual moment for this part of the comic.',line:longLine,kind:'dialogue'})),lettering:Array.from({length:5},(_,index)=>({x:.05,y:.04+index*.18,width:.6,height:.12}))};
+ assert.equal(comicEditorSceneSchema.safeParse(scene).success,true);
+ assert.equal(longLine.length>55,true);
 });

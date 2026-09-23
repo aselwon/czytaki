@@ -18,7 +18,7 @@ export const heroRolePrompts={
 };
 export const worlds={forest:"Magiczny las",space:"Kosmiczna wyprawa",ocean:"Podwodny świat",city:"Miasto bohaterów",kingdom:"Baśniowe królestwo"};
 export const styles={storybook:"Książkowa ilustracja",comic:"Kolorowy komiks",watercolor:"Miękka akwarela"};
-export const comicPanelSchema=z.object({visual:z.string().min(8).max(220),line:z.string().min(2).max(55),kind:z.enum(["dialogue","narration"])});
+export const comicPanelSchema=z.object({visual:z.string().min(8).max(220),line:z.string().min(2).max(90),kind:z.enum(["dialogue","narration"])});
 export type ComicPanel=z.infer<typeof comicPanelSchema>;
 export const letteringBoxSchema=z.object({x:z.number().min(0).max(1),y:z.number().min(0).max(1),width:z.number().positive().max(1),height:z.number().positive().max(1)}).refine(box=>box.x+box.width<=1&&box.y+box.height<=1);
 export const editableLetteringBoxSchema=letteringBoxSchema.refine(box=>box.width>=.12&&box.height>=.055,"Dymek jest zbyt mały.");
