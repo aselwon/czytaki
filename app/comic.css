@@ -15,6 +15,7 @@
 .comic-template-preview.embedded-bubbles .comic-lettering{padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;font-weight:400}.comic-template-preview.embedded-bubbles .comic-lettering.narration{background:transparent}
 .comic-template-link{display:inline-block;margin:-4px 0 20px;font-weight:800;font-size:15px;text-decoration:underline;text-underline-offset:4px}
 .comic-preview-download{width:100%;justify-content:center;margin:16px 0 0}
+.comic-editor-link{width:100%;margin-top:14px}
 .resume-card{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:18px 0;padding:18px 20px;border:2px solid #1b5b4f;border-radius:18px;background:#e9f6ef;color:#173f37}
 .resume-card div{display:grid;gap:4px}.resume-card strong{font-size:1rem}.resume-card span{font-size:.95rem;line-height:1.4}.resume-card button{flex:none;white-space:nowrap}
 @media(max-width:760px){.comic-preview .comic-text{font-size:clamp(10px,2.3vw,13px);padding:4px 6px}}

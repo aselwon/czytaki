@@ -13,11 +13,16 @@ function drawBubble(page:PDFPage,panel:ComicPanel,font:PDFFont,slot:BubbleSlot,c
  const isDialogue=panel.kind==="dialogue";
  if(isDialogue)page.drawEllipse({x:x+width/2,y:y+height/2,xScale:width/2,yScale:height/2,color:white,borderColor:ink,borderWidth:1.8});
  else page.drawRectangle({x,y,width,height,color:caption,borderColor:ink,borderWidth:1.8});
- let size=13,lines=wrapText(panel.line,font,size,width-37);
- while(lines.length*size*1.25>height-22&&size>11.5){size-=.5;lines=wrapText(panel.line,font,size,width-37);}
- if(lines.length*size*1.25>height-22)throw new Error("Comic bubble text exceeds bounds");
+ const textWidth=width-Math.min(37,width*.18);
+ let size=13,lines=wrapText(panel.line,font,size,textWidth);
+ while(lines.length*size*1.25>height-18&&size>8.5){size-=.5;lines=wrapText(panel.line,font,size,textWidth);}
+ if(lines.length*size*1.25>height-18)throw new Error("Comic bubble text exceeds bounds");
  const lineHeight=size*1.25,top=y+(height+lines.length*lineHeight)/2-lineHeight*.76;
  lines.forEach((line,i)=>page.drawText(line,{x:x+(width-font.widthOfTextAtSize(line,size))/2,y:top-i*lineHeight,font,size,color:ink}));
+}
+export function comicSlots(scene:Book["scenes"][number],index:number,layoutVersion:Book["comicLayoutVersion"]):BubbleSlot[]{
+ if(scene.lettering?.length===5)return scene.lettering.map(box=>({x:box.x*500,y:box.y*750,width:box.width*500,height:box.height*750}));
+ return (layoutVersion===COMIC_LAYOUT_VERSION?overlayComicLayout(scene.comicTemplate??index):legacyComicLayout(scene.comicTemplate??index)).bubbles.map(box=>({...box}));
 }
 export function fitComicLettering(text:string,font:PDFFont,width:number,height:number){
  let size=14,lines=wrapText(text,font,size,width);
@@ -32,8 +37,7 @@ function drawComicPage(page:PDFPage,art:PDFImage,scene:Book["scenes"][number],fo
  page.drawText(String(index+1)+" / 6",{x:516,y:812,font,size:10,color:muted});
  if(layoutVersion){
   page.drawImage(art,{x:52.5,y:59,width:490,height:735});
-  const layout=layoutVersion===COMIC_LAYOUT_VERSION?overlayComicLayout(scene.comicTemplate??index):legacyComicLayout(scene.comicTemplate??index);
-  layout.bubbles.forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot,{x:52.5,y:59,width:490,height:735}));
+  comicSlots(scene,index,layoutVersion).forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot,{x:52.5,y:59,width:490,height:735}));
  }else{
  page.drawImage(art,{x:47,y:59,width:500,height:735});
  page.drawRectangle({x:47,y:59,width:500,height:735,borderColor:ink,borderWidth:1.5});

@@ -21,8 +21,13 @@ export const styles={storybook:"Książkowa ilustracja",comic:"Kolorowy komiks",
 export const comicPanelSchema=z.object({visual:z.string().min(8).max(220),line:z.string().min(2).max(55),kind:z.enum(["dialogue","narration"])});
 export type ComicPanel=z.infer<typeof comicPanelSchema>;
 export const letteringBoxSchema=z.object({x:z.number().min(0).max(1),y:z.number().min(0).max(1),width:z.number().positive().max(1),height:z.number().positive().max(1)}).refine(box=>box.x+box.width<=1&&box.y+box.height<=1);
+export const editableLetteringBoxSchema=letteringBoxSchema.refine(box=>box.width>=.2&&box.height>=.08,"Dymek jest zbyt mały.");
 export const bookSchema=z.object({title:z.string().min(3).max(70),summary:z.string().min(10).max(220),character:z.string().min(10).max(700),comicLayoutVersion:z.union([z.literal(1),z.literal(2)]).optional(),scenes:z.array(z.object({title:z.string().min(1).max(50),text:z.string().min(10).max(550),imagePrompt:z.string().min(20).max(1600),panels:z.array(comicPanelSchema).length(5).optional(),comicTemplate:z.number().int().min(0).max(7).optional(),lettering:z.array(letteringBoxSchema).length(5).optional()})).length(6)});
 export type Book=z.infer<typeof bookSchema>;
+export const comicEditorSceneSchema=z.object({title:z.string().min(1).max(50),comicTemplate:z.number().int().min(0).max(7),panels:z.array(comicPanelSchema).length(5),lettering:z.array(editableLetteringBoxSchema).length(5)});
+export const comicEditorUpdateSchema=z.object({revision:z.number().int().nonnegative(),scenes:z.array(comicEditorSceneSchema).length(6)});
+export type ComicEditorScene=z.infer<typeof comicEditorSceneSchema>;
+export type ComicEditorPayload={orderId:string;title:string;revision:number;needsCleanArtwork:boolean;scenes:ComicEditorScene[]};
 // Structured outputs guarantee field types, but not the length limits used by the UI and PDF.
 // Shorten only oversized model text; malformed or missing content still fails validation.
 function fitLength(value:unknown,max:number){
@@ -48,5 +53,5 @@ export function normalizeGeneratedBook(raw:unknown):Book{
  }):source.scenes;
  return bookSchema.parse({...source,title:fitLength(source.title,70),summary:fitLength(source.summary,220),character:fitLength(source.character,700),scenes});
 }
-export type OrderView={id:string;status:string;generated:number;title?:string;summary?:string;previewText?:string;previewPanels?:ComicPanel[];previewLettering?:z.infer<typeof letteringBoxSchema>[];comicLayoutVersion?:number;previewAvailable?:boolean;remakeAvailable?:boolean;comicVersion?:number;name:string;format:ProductInput["format"];amount:number;currency:string;email?:string;error?:string;paymentStatus:string;deliveryStatus:string;};
+export type OrderView={id:string;status:string;generated:number;title?:string;summary?:string;previewText?:string;previewPanels?:ComicPanel[];previewLettering?:z.infer<typeof letteringBoxSchema>[];comicLayoutVersion?:number;previewAvailable?:boolean;remakeAvailable?:boolean;editorAvailable?:boolean;comicVersion?:number;name:string;format:ProductInput["format"];amount:number;currency:string;email?:string;error?:string;paymentStatus:string;deliveryStatus:string;};
 export type ServiceConfig={generation:boolean;checkout:boolean;amount:number;currency:string;};

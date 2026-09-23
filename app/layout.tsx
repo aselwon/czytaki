@@ -3,6 +3,7 @@ import "./globals.css";
 import "./studio.css";
 import "./hero.css";
 import "./comic.css";
+import "./editor.css";
 
 export const metadata: Metadata = {
   title: "Czytaki — Ze zdjęcia do własnej książeczki",

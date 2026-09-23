@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,writeFile} from 'node:fs/promises';
 import {PDFDocument} from 'pdf-lib';
-import {createBookPdf} from '../lib/server/pdf.ts';
+import {comicSlots,createBookPdf} from '../lib/server/pdf.ts';
 import {comicLayout,comicLayoutCount,comicLayoutPrompt} from '../lib/comic-layouts.ts';
 import {productSchema,bookSchema,normalizeGeneratedBook} from '../lib/product.ts';
 test('book contains eight pages, Polish text and a dedicated ending',async()=>{
@@ -24,7 +24,8 @@ test('comic uses five readable Polish beats on every illustrated page',async()=>
   {visual:'The hero gently holds the glowing seed.',line:'Posadzę je tutaj!',kind:'dialogue'},
   {visual:'A tiny sprout appears under warm sunlight.',line:'To początek nowej przygody.',kind:'narration'}
  ];
- const book=bookSchema.parse({title:'Maja i sekret słonecznej polany',summary:'Pogodna opowieść o odwadze i trosce.',character:'A curious child exploring the meadow.',comicLayoutVersion:2,scenes:Array.from({length:6},(_,i)=>({title:'Rozdział '+(i+1),text:'Maja idzie za błękitnym ptaszkiem i odkrywa niezwykłe miejsce.',imagePrompt:'A colorful comic page showing Maja in a sunny meadow with a blue bird.',panels:beats,comicTemplate:i%8}))});
+ const lettering=[{x:.05,y:.04,width:.36,height:.12},{x:.57,y:.2,width:.36,height:.12},{x:.05,y:.36,width:.36,height:.12},{x:.57,y:.54,width:.36,height:.12},{x:.05,y:.76,width:.42,height:.12}];
+ const book=bookSchema.parse({title:'Maja i sekret słonecznej polany',summary:'Pogodna opowieść o odwadze i trosce.',character:'A curious child exploring the meadow.',comicLayoutVersion:2,scenes:Array.from({length:6},(_,i)=>({title:'Rozdział '+(i+1),text:'Maja idzie za błękitnym ptaszkiem i odkrywa niezwykłe miejsce.',imagePrompt:'A colorful comic page showing Maja in a sunny meadow with a blue bird.',panels:beats,comicTemplate:i%8,lettering}))});
  const bytes=await createBookPdf(book,settings,Array(6).fill(image),font);
  const pdf=await PDFDocument.load(bytes);assert.equal(pdf.getPageCount(),8);assert.equal(pdf.getTitle(),book.title);assert.ok(bytes.length<20*1024*1024);
  if(process.env.PDF_QA_PATH)await writeFile(process.env.PDF_QA_PATH,bytes);
@@ -43,6 +44,12 @@ test('comic has eight distinct full-page layouts with five non-overlapping bubbl
   }
  }
  assert.equal(patterns.size,8);
+});
+test('saved HTML editor coordinates override the preset in the PDF renderer',()=>{
+ const lettering=[{x:.08,y:.06,width:.36,height:.12},{x:.55,y:.2,width:.36,height:.12},{x:.08,y:.36,width:.36,height:.12},{x:.55,y:.54,width:.36,height:.12},{x:.08,y:.76,width:.36,height:.12}];
+ const panels=Array.from({length:5},()=>({visual:'A clear comic moment with the main character.',line:'Krótki tekst.',kind:'dialogue'}));
+ const scene={title:'Plansza',text:'Opis sceny do testu.',imagePrompt:'A continuous illustrated comic page with five story moments.',comicTemplate:7,panels,lettering};
+ assert.deepEqual(comicSlots(scene,0,2)[0],{x:40,y:45,width:180,height:90});
 });
 test('the order schema rejects missing consent and unsupported formats',()=>{
  assert.equal(productSchema.safeParse({name:'Ada',consent:false}).success,false);

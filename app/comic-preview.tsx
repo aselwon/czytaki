@@ -13,5 +13,6 @@ export default function ComicPreview({order,imageSrc,embeddedBubbles=false}:{ord
    })}
   </div>
   <span>PODGLĄD · 1 Z 6 PLANSZ</span><h3>{order.title}</h3>{!comic&&<p>{order.previewText}</p>}
+  {order.editorAvailable&&<a className="button secondary comic-editor-link" href={`/edytor/${order.id}`}>Edytuj dymki i tekst</a>}
  </div>;
 }
