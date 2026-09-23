@@ -19,9 +19,19 @@ Kod integracji jest zaimplementowany. Obecne wdrożenie nie ma kluczy usług, dl
 
 Cena 39 zł jest propozycją demonstracyjną; nie potwierdzono kosztów i marży. Cała książka powstaje przed płatnością, więc także niezakończone zakupy generują koszty AI.
 
-## Konfiguracja
+## Uruchomienie lokalne
 
-Node >=22.13, npm ci, npm run dev. Sekrety wyłącznie po stronie serwera. Szablon: .env.example; nigdy nie commitować prawdziwych kluczy.
+Repozytorium działa samodzielnie na komputerze i przechowuje lokalne zamówienia, obrazy oraz PDF-y w ignorowanym katalogu `.wrangler/`. Wymagany jest Node >=22.13.
+
+1. `npm ci` - tylko przy pierwszym uruchomieniu lub po zmianie zależności.
+2. Skopiuj `.env.example` do `.env.local` i ustaw `OPENAI_API_KEY`. Plik jest ignorowany przez Git.
+3. `npm run local` - buduje aplikację, przygotowuje lokalną bazę i uruchamia ją pod `http://127.0.0.1:8787`.
+
+Kolejne uruchomienia korzystają z tej samej lokalnej bazy i magazynu plików. Zatrzymanie aplikacji: `Ctrl+C`. `npm run local:setup` tylko przygotowuje build i bazę, bez uruchamiania serwera. Płatności i wysyłka pozostają lokalnie wyłączone, a limit generowania jest wyłączony.
+
+## Konfiguracja hostowana
+
+Sekrety wyłącznie po stronie serwera. Szablon: `.env.example`; nigdy nie commitować prawdziwych kluczy.
 
 W hostingu skonfiguruj:
 - OPENAI_API_KEY; opcjonalnie OPENAI_TEXT_MODEL i OPENAI_IMAGE_MODEL.

@@ -9,7 +9,7 @@ import {detectBubbleInteriors} from '../lib/server/bubble-detection.ts';
 import {fitComicLettering} from '../lib/server/pdf.ts';
 import {comicLayoutCount,comicTemplateIndex,comicLetteringBoxes} from '../lib/comic-layouts.ts';
 import {sceneImageKey} from '../lib/server/comic-assets.ts';
-import {letteringBoxSchema} from '../lib/product.ts';
+import {editableLetteringBoxSchema,letteringBoxSchema} from '../lib/product.ts';
 
 test('eight templates yield five actual blank interiors with room for long Polish copy',async()=>{
  assert.equal(comicLayoutCount,8);
@@ -55,4 +55,9 @@ test('runtime lettering boxes are deterministic and always fit the page',()=>{
    if(i)assert.ok(box.y>boxes[i-1].y+boxes[i-1].height);
   }
  }
+});
+test('the editor accepts compact bubbles but still rejects unusably small ones',()=>{
+ assert.equal(editableLetteringBoxSchema.safeParse({x:.1,y:.1,width:.12,height:.055}).success,true);
+ assert.equal(editableLetteringBoxSchema.safeParse({x:.1,y:.1,width:.115,height:.055}).success,false);
+ assert.equal(editableLetteringBoxSchema.safeParse({x:.1,y:.1,width:.12,height:.05}).success,false);
 });

@@ -15,8 +15,8 @@ function drawBubble(page:PDFPage,panel:ComicPanel,font:PDFFont,slot:BubbleSlot,c
  else page.drawRectangle({x,y,width,height,color:caption,borderColor:ink,borderWidth:1.8});
  const textWidth=width-Math.min(37,width*.18);
  let size=13,lines=wrapText(panel.line,font,size,textWidth);
- while(lines.length*size*1.25>height-18&&size>8.5){size-=.5;lines=wrapText(panel.line,font,size,textWidth);}
- if(lines.length*size*1.25>height-18)throw new Error("Comic bubble text exceeds bounds");
+ while(lines.length*size*1.25>height-10&&size>5.5){size-=.5;lines=wrapText(panel.line,font,size,textWidth);}
+ if(lines.length*size*1.25>height-10)throw new Error("Comic bubble text exceeds bounds");
  const lineHeight=size*1.25,top=y+(height+lines.length*lineHeight)/2-lineHeight*.76;
  lines.forEach((line,i)=>page.drawText(line,{x:x+(width-font.widthOfTextAtSize(line,size))/2,y:top-i*lineHeight,font,size,color:ink}));
 }
