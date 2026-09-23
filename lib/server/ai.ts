@@ -8,6 +8,8 @@ import {comicLayoutPrompt,comicTemplateIndex,COMIC_LAYOUT_VERSION} from "../comi
 const string={type:"string"};
 const panelSchema={type:"object",additionalProperties:false,required:["visual","line","kind"],properties:{visual:string,line:string,kind:{type:"string",enum:["dialogue","narration"]}}};
 const panelsSchema={type:"array",minItems:5,maxItems:5,items:panelSchema};
+const retryableStatus=new Set([408,429,500,502,503,504]);
+const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 function storySchema(comic:boolean){
  const sceneProperties:Record<string,unknown>={title:string,text:string,imagePrompt:string};
  if(comic)sceneProperties.panels=panelsSchema;
@@ -16,9 +18,30 @@ function storySchema(comic:boolean){
 async function openai(path:string,body:BodyInit,json=false){
  const key=runtime().OPENAI_API_KEY;
  if(!key)throw new HttpError(503,"Generator AI nie został podłączony.");
- const r=await fetch("https://api.openai.com/v1/"+path,{method:"POST",headers:{Authorization:"Bearer "+key,...(json?{"Content-Type":"application/json"}:{})},body,signal:AbortSignal.timeout(180000)});
- if(!r.ok){console.error("OpenAI request failed",r.status,r.headers.get("x-request-id"));throw new HttpError(503,"Generator nie ukończył tego kroku. Spróbuj ponownie za chwilę.");}
- return r.json() as Promise<Record<string,any>>;
+ const attempts=path==="responses"||path==="moderations"?2:1;
+ for(let attempt=0;attempt<attempts;attempt++){
+  let r:Response;
+  try{r=await fetch("https://api.openai.com/v1/"+path,{method:"POST",headers:{Authorization:"Bearer "+key,...(json?{"Content-Type":"application/json"}:{})},body,signal:AbortSignal.timeout(180000)});}
+  catch(e){
+   console.error("OpenAI transport failed",e instanceof Error?e.name:"UnknownError");
+   if(attempt+1<attempts){await wait(900*(attempt+1));continue;}
+   throw new HttpError(503,"Połączenie z generatorem zostało przerwane. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");
+  }
+  if(!r.ok){
+   let error:{code?:string;type?:string}|undefined;
+   try{error=(await r.clone().json() as {error?:{code?:string;type?:string}}).error;}catch{}
+   console.error("OpenAI request failed",r.status,error?.code||error?.type||"unknown",r.headers.get("x-request-id"));
+   if(retryableStatus.has(r.status)&&attempt+1<attempts){await wait(900*(attempt+1));continue;}
+   if(r.status===401)throw new HttpError(503,"Klucz OpenAI jest nieprawidłowy albo został wyłączony.");
+   if(r.status===429&&error?.code==="insufficient_quota")throw new HttpError(503,"Konto OpenAI nie ma dostępnych środków. Uzupełnij saldo i kliknij „Kontynuuj generowanie”.");
+   if(r.status===429)throw new HttpError(503,"Generator jest chwilowo przeciążony. Odczekaj minutę i kliknij „Kontynuuj generowanie”.");
+   if(r.status===403||r.status===404)throw new HttpError(503,"Wybrany model OpenAI nie jest dostępny dla tego projektu.");
+   throw new HttpError(503,"Generator nie ukończył tego kroku. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");
+  }
+  try{return await r.json() as Record<string,any>;}
+  catch{throw new HttpError(503,"Generator zwrócił niepełną odpowiedź. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");}
+ }
+ throw new HttpError(503,"Generator nie ukończył tego kroku. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");
 }
 function outputText(response:Record<string,any>){return(response.output||[]).flatMap((v:{content?:unknown[]})=>v.content||[]).filter((v:{type?:string})=>v.type==="output_text").map((v:{text:string})=>v.text).join("");}
 function validatedBook(raw:unknown){try{return normalizeGeneratedBook(raw);}catch(e){if(e instanceof ZodError)console.error("Generated book validation failed",e.issues.map(issue=>({path:issue.path.join("."),code:issue.code})));throw e;}}
@@ -35,8 +58,18 @@ export async function generateBook(p:ProductInput,photo:Uint8Array,mime:string):
   "Output limits: title 70 characters, summary 220, character 700; each scene title 50, prose text 550, imagePrompt 1600. Reader-facing text in age-appropriate Polish; visual descriptions and character notes in English.",
   comic?"For EACH scene provide exactly FIVE sequential visual beats for one flowing comic page, not a rectangular panel grid. Each beat has: visual, a concrete action-focused visual description in English (8-180 characters); line, a short expressive Polish dialogue or narration (2-40 characters, never more than 55); kind dialogue or narration. Vary close-ups and wide shots, show a clear change of action in every beat. Dialogue must be attributable to a visible character. No full prose in bubbles. ImagePrompt summarizes continuity and setting, not typography.":"For story or fairy tale, use one scenic illustration per scene."
  ].join(" ");
- const r=await openai("responses",JSON.stringify({model:runtime().OPENAI_TEXT_MODEL||"gpt-4.1-mini",store:false,max_output_tokens:6500,instructions,input:[{role:"user",content:[{type:"input_text",text:JSON.stringify({hero:p.name,subject:p.subject,format:formats[p.format],heroArchetype:heroRoles[p.heroRole],originalDesignBrief:heroRolePrompts[p.heroRole],customerThemeNote:p.heroIdea||undefined,world:worlds[p.world],style:styles[p.style],readerAge:p.age})},{type:"input_image",image_url:image,detail:"low"}]}],text:{format:{type:"json_schema",name:"personalized_book",strict:true,schema:storySchema(comic)}}}),true);
- const book=validatedBook(JSON.parse(outputText(r)));
+ const requestBody=JSON.stringify({model:runtime().OPENAI_TEXT_MODEL||"gpt-4.1-mini",store:false,max_output_tokens:6500,instructions,input:[{role:"user",content:[{type:"input_text",text:JSON.stringify({hero:p.name,subject:p.subject,format:formats[p.format],heroArchetype:heroRoles[p.heroRole],originalDesignBrief:heroRolePrompts[p.heroRole],customerThemeNote:p.heroIdea||undefined,world:worlds[p.world],style:styles[p.style],readerAge:p.age})},{type:"input_image",image_url:image,detail:"low"}]}],text:{format:{type:"json_schema",name:"personalized_book",strict:true,schema:storySchema(comic)}}});
+ let book:Book|undefined;
+ for(let attempt=0;attempt<2&&!book;attempt++){
+  try{const r=await openai("responses",requestBody,true);book=validatedBook(JSON.parse(outputText(r)));}
+  catch(e){
+   if(e instanceof HttpError)throw e;
+   console.error("Generated book response unusable",e instanceof Error?e.name:"UnknownError");
+   if(attempt===0)continue;
+   throw new HttpError(503,"Generator zwrócił niepełną historię. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");
+  }
+ }
+ if(!book)throw new HttpError(503,"Generator zwrócił niepełną historię. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");
  if(comic){book.comicLayoutVersion=COMIC_LAYOUT_VERSION;book.scenes.forEach((scene,i)=>{scene.comicTemplate=comicTemplateIndex(book.title+p.name,i);});}
  if(comic&&!book.scenes.every(scene=>scene.panels?.length===5))throw new HttpError(503,"Komiks nie ma kompletu kadrów.");
  await moderate(JSON.stringify(book)+" "+p.dedication);
