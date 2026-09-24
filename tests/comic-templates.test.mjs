@@ -52,6 +52,8 @@ test('runtime lettering boxes are deterministic and always fit the page',()=>{
   assert.equal(boxes.length,5);
   for(const [i,box] of boxes.entries()){
    assert.equal(letteringBoxSchema.safeParse(box).success,true);
+   assert.ok(box.height>=.07&&box.height<=.08);
+   assert.ok(box.width>=.26&&box.width<=.4);
    if(i)assert.ok(box.y>boxes[i-1].y+boxes[i-1].height);
   }
  }

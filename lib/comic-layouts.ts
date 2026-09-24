@@ -2,7 +2,12 @@
 export type BubbleSlot={x:number;y:number;width:number;height:number};
 export type ComicLayout={name:string;composition:string;bubbles:readonly BubbleSlot[]};
 export const COMIC_LAYOUT_VERSION=2;
-const slot=(x:number,y:number,width=218,height=88):BubbleSlot=>({x,y,width,height});
+// Compact bubbles preserve the old template centres while using roughly half
+// of their former area. Their final height is 7.5–8% of the 750 px page.
+const slot=(x:number,y:number,width=218,height=88):BubbleSlot=>{
+ const compactWidth=Math.round(width*.78),compactHeight=Math.round(height*.64);
+ return{x:x+(width-compactWidth)/2,y:y+(height-compactHeight)/2,width:compactWidth,height:compactHeight};
+};
 export const comicLayouts:readonly ComicLayout[]=[
  {name:"Wędrująca ścieżka",composition:"Five connected moments follow an S-shaped path through continuous scenery.",bubbles:[slot(20,20),slot(262,163),slot(20,307),slot(262,451),slot(20,595)]},
  {name:"Fala przygody",composition:"Five moments flow as a wave, with alternating foreground and background.",bubbles:[slot(262,20),slot(20,163),slot(262,307),slot(20,451),slot(262,595)]},
