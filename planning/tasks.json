@@ -38,7 +38,7 @@
       "acceptance": ["Workflow zielony na PR.", "Czas < 10 min."],
       "dependsOn": ["CZ-01", "CZ-02"],
       "tier": "worker",
-      "status": "review"
+      "status": "done"
     },
     {
       "id": "CZ-04",
