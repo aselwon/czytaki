@@ -228,6 +228,20 @@
       "dependsOn": ["CZ-06", "CZ-12"],
       "tier": "worker",
       "status": "todo"
+    },
+    {
+      "id": "CZ-19",
+      "title": "Migracja generowania obrazów z gpt-image-1.5 na GPT Image 2 przed 2026-12-01",
+      "description": "OpenAI usuwa gpt-image-1.5 1 grudnia 2026. Zmień domyślny OPENAI_IMAGE_MODEL w lib/server/ai.ts (dziś fallback \"gpt-image-1.5\") na GPT Image 2 (potwierdź dokładny identyfikator modelu i obsługiwane parametry, m.in. input_fidelity, rozmiary i jakość, w dokumentacji OpenAI) i zaktualizuj cennik modeli z CZ-04. Zachowaj regułę: OpenAI wyłącznie dla opłaconych zamówień (bramka assertPaidOrder) i dzienny limit 5 zł (CZ-05). Ponownie zmierz koszt książeczki 8/15/30 stron i zaktualizuj szacunki w SPEC.md/docs. Termin twardy: wdrożenie przed 2026-12-01.",
+      "acceptance": [
+        "Brak odwołań do gpt-image-1.5 w kodzie i konfiguracji (poza notą migracyjną).",
+        "Testy z atrapą OpenAI wysyłają nowy model i poprawne parametry; test bramki płatności i limitu 5 zł zielony.",
+        "Nowy pomiar kosztu na książeczkę (8/15/30 stron) zapisany w docs, wykonany w trybie testowym po płatności (razem z CZ-14).",
+        "Wdrożone na produkcję przed 2026-12-01."
+      ],
+      "dependsOn": ["CZ-04", "CZ-05"],
+      "tier": "planner",
+      "status": "todo"
     }
   ]
 }
