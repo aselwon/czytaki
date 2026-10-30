@@ -1,6 +1,6 @@
 import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
-import {generateBook,generateIllustration} from "@/lib/server/ai";
+import {generateBook,generateIllustration,locateComicSpeech} from "@/lib/server/ai";
 import {createBookPdf} from "@/lib/server/pdf";
 import {COMIC_LAYOUT_VERSION,comicLetteringBoxes,comicTemplateIndex} from "@/lib/comic-layouts";
 import {sceneImageKey,sceneImageType,templatePrefix} from "@/lib/server/comic-assets";
@@ -28,19 +28,32 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
    if(!photo)throw new HttpError(410,"Zdjęcie wygasło. Przygotuj nową historię.");
    const result=await generateBook(p,new Uint8Array(await photo.arrayBuffer()),r.photo_type!);
    await DB.prepare("UPDATE orders SET book=? WHERE id=? AND lock_token=?").bind(JSON.stringify(result),id,lock).run();
-  }else if(r.generated<6){
-   const photo=await BUCKET.get(r.photo_key!);
-   if(!photo)throw new HttpError(410,"Zdjęcie wygasło. Przygotuj nową historię.");
-   const first=r.generated>0?await BUCKET.get(sceneImageKey(id,b,0)):null;
-   const result=await generateIllustration(p,b,r.generated,new Uint8Array(await photo.arrayBuffer()),r.photo_type!,first?new Uint8Array(await first.arrayBuffer()):undefined);
-   if(b.comicLayoutVersion===COMIC_LAYOUT_VERSION){
-    b.scenes[r.generated].lettering=comicLetteringBoxes(b.scenes[r.generated].comicTemplate!);
+  }else if(r.generated<b.scenes.length){
+   const imageKey=sceneImageKey(id,b,r.generated),cached=await BUCKET.get(imageKey);
+   let result:Uint8Array;
+   if(cached){result=new Uint8Array(await cached.arrayBuffer());}
+   else{
+    const photo=r.photo_key?await BUCKET.get(r.photo_key):null;
+    if(!photo)throw new HttpError(410,"Zdjęcie wygasło. Przygotuj nową historię.");
+    const first=r.generated>0?await BUCKET.get(sceneImageKey(id,b,0)):null;
+    result=await generateIllustration(p,b,r.generated,new Uint8Array(await photo.arrayBuffer()),r.photo_type!,first?new Uint8Array(await first.arrayBuffer()):undefined);
    }
-   await BUCKET.put(sceneImageKey(id,b,r.generated),result,{httpMetadata:{contentType:sceneImageType(b)}});
+   if(!cached)await BUCKET.put(imageKey,result,{httpMetadata:{contentType:sceneImageType(b)}});
+   if(b.comicLayoutVersion===COMIC_LAYOUT_VERSION){
+    b.scenes[r.generated].lettering=await locateComicSpeech(b.scenes[r.generated],result);
+    b.scenes[r.generated].placementVersion=1;
+   }
+   
    await DB.prepare("UPDATE orders SET generated=generated+1,book=? WHERE id=? AND lock_token=?").bind(JSON.stringify(b),id,lock).run();
   }else{
    const images:Uint8Array[]=[];
-   for(let i=0;i<6;i++){const image=await BUCKET.get(sceneImageKey(id,b,i));if(!image)throw new HttpError(503,"Brakuje jednej z ilustracji.");images.push(new Uint8Array(await image.arrayBuffer()));}
+   for(let i=0;i<b.scenes.length;i++){const image=await BUCKET.get(sceneImageKey(id,b,i));if(!image)throw new HttpError(503,"Brakuje jednej z ilustracji.");images.push(new Uint8Array(await image.arrayBuffer()));}
+   // Resume partially generated older books by analysing one saved page per request.
+   const pending=p.format==="comic"?b.scenes.findIndex(scene=>scene.placementVersion!==1):-1;
+   if(pending>=0){b.scenes[pending].lettering=await locateComicSpeech(b.scenes[pending],images[pending]);b.scenes[pending].placementVersion=1;
+    await DB.prepare("UPDATE orders SET book=?,lock_token=NULL,lock_until=0,updated_at=? WHERE id=? AND lock_token=?").bind(JSON.stringify(b),Date.now(),id,lock).run();lock=undefined;
+    return Response.json(view(await findOrder(id)),{headers:{"Cache-Control":"no-store"}});
+   }
    const fontBytes=new Uint8Array(Buffer.from(fontUrl.split(",")[1],"base64"));
    const pdf=await createBookPdf(b,p,images,fontBytes);
    if(pdf.length>20*1024*1024)throw new HttpError(503,"Książeczka jest zbyt duża do wysyłki. Skontaktuj się z obsługą.");

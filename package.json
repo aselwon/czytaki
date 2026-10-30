@@ -14,7 +14,11 @@
     "local": "node scripts/local.mjs",
     "local:setup": "node scripts/local.mjs --setup-only",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "admin:password": "node scripts/admin-password.mjs",
+    "cf": "node scripts/cloudflare.mjs",
+    "build:cloudflare": "CZYTAKI_DEPLOY_TARGET=cloudflare npm run build",
+    "deploy:cloudflare": "npm run build:cloudflare && npm run cf -- deploy --config dist/server/wrangler.json"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

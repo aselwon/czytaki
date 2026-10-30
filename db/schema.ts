@@ -10,3 +10,4 @@ export const orders=sqliteTable("orders",{
  createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),
 },t=>[index("idx_orders_owner_created").on(t.ownerHash,t.createdAt),uniqueIndex("idx_orders_stripe_session").on(t.stripeSession)]);
 export const quotas=sqliteTable("generation_quotas",{key:text("key").primaryKey(),count:integer("count").notNull().default(0)});
+export const adminLoginAttempts=sqliteTable("admin_login_attempts",{key:text("key").primaryKey(),count:integer("count").notNull().default(0),windowStart:integer("window_start").notNull(),blockedUntil:integer("blocked_until").notNull().default(0)});

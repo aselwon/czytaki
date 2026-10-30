@@ -4,13 +4,13 @@ import {comicLetteringBoxes} from "@/lib/comic-layouts";
 import {comicEditorUpdateSchema,type Book,type ComicEditorPayload} from "@/lib/product";
 import {sceneImageKey,templatePrefix} from "@/lib/server/comic-assets";
 import {createBookPdf} from "@/lib/server/pdf";
-import {apiError,findOrder,HttpError,infrastructure,ownOrder,salesReady,sameOrigin,settings,story,type OrderRow} from "@/lib/server/runtime";
+import {apiError,boundedBytes,findOrder,HttpError,infrastructure,ownOrder,ownerPreviewAllowed,sameOrigin,settings,story,type OrderRow} from "@/lib/server/runtime";
 
 function editorPayload(r:OrderRow,b:Book):ComicEditorPayload{
  return{
   orderId:r.id,title:b.title,revision:r.updated_at,needsCleanArtwork:b.comicLayoutVersion!==2,
   scenes:b.scenes.map((scene,index)=>({
-   title:scene.title,
+   title:scene.title,text:scene.text,
    comicTemplate:scene.comicTemplate??index%8,
    panels:scene.panels!,
    lettering:scene.lettering??comicLetteringBoxes(scene.comicTemplate??index),
@@ -20,7 +20,7 @@ function editorPayload(r:OrderRow,b:Book):ComicEditorPayload{
 
 function editableOrder(r:OrderRow,b:Book|null){
  const p=settings(r);
- if(salesReady()||r.payment_status!=="unpaid"||r.status!=="ready"||p.format!=="comic"||!b?.scenes.every(scene=>scene.panels?.length===5))throw new HttpError(403,"Edytor nie jest dostępny dla tej książeczki.");
+ if(!ownerPreviewAllowed()||r.payment_status!=="unpaid"||r.status!=="ready"||p.format!=="comic"||!b?.scenes.every(scene=>scene.panels?.length===5))throw new HttpError(403,"Edytor nie jest dostępny dla tej książeczki.");
  return p;
 }
 
@@ -34,21 +34,23 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
 export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
  let id:string|undefined,lock:string|undefined;
  try{
-  sameOrigin(req);const length=Number(req.headers.get("content-length")||0);if(length>100_000)throw new HttpError(413,"Zmiany są zbyt duże.");
+  sameOrigin(req);const length=Number(req.headers.get("content-length")||0);if(length>400_000)throw new HttpError(413,"Zmiany są zbyt duże.");
   let r=await ownOrder(req,(await params).id);id=r.id;const current=story(r),p=editableOrder(r,current);
   if(current!.comicLayoutVersion!==2)throw new HttpError(409,"Najpierw odśwież ilustracje do wersji bez wbudowanych dymków.");
-  const parsed=comicEditorUpdateSchema.safeParse(await req.json());if(!parsed.success)throw new HttpError(400,"Sprawdź tekst i rozmiary dymków.");const update=parsed.data;
+  const body=new TextDecoder().decode(await boundedBytes(req,400_000));
+  let input:unknown;try{input=JSON.parse(body);}catch{throw new HttpError(400,"Nieprawidłowy format zmian. Odśwież edytor i spróbuj ponownie.");}
+  const parsed=comicEditorUpdateSchema.safeParse(input);if(!parsed.success)throw new HttpError(400,"Sprawdź tekst i rozmiary dymków.");const update=parsed.data;if(update.scenes.length!==current!.scenes.length)throw new HttpError(400,"Liczba stron nie zgadza się z książeczką.");
   const {DB,BUCKET}=infrastructure(),now=Date.now();lock=crypto.randomUUID();
   const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=? WHERE id=? AND updated_at=? AND lock_until<? AND status='ready'").bind(lock,now+120000,id,update.revision,now).run();
   if(!claim.meta.changes)throw new HttpError(409,"Książeczka zmieniła się w innej karcie. Odśwież edytor.");
   r=await findOrder(id);const b=story(r)!;
   update.scenes.forEach((scene,index)=>{
-   b.scenes[index].comicTemplate=scene.comicTemplate;
+   b.scenes[index].comicTemplate=scene.comicTemplate;b.scenes[index].text=scene.text;
    b.scenes[index].lettering=scene.lettering;
    b.scenes[index].panels=b.scenes[index].panels!.map((panel,panelIndex)=>({...panel,line:scene.panels[panelIndex].line,kind:scene.panels[panelIndex].kind}));
   });
   const images:Uint8Array[]=[];
-  for(let index=0;index<6;index++){
+  for(let index=0;index<b.scenes.length;index++){
    const art=await BUCKET.get(sceneImageKey(id,b,index,r.pdf_key));
    if(!art)throw new HttpError(503,"Brakuje ilustracji strony "+(index+1)+".");
    images.push(new Uint8Array(await art.arrayBuffer()));

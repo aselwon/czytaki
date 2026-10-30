@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "maja",
+    "name": "Maja",
+    "kind": "Dziecko",
+    "title": "Maja i szept lasu",
+    "split": 512,
+    "story": "Maja usłyszała ciche ćwierkanie za zakrętem. Mały ptaszek zgubił drogę do domu. Razem odkryli, że świetliste rośliny wskazują ścieżkę do ukrytej doliny."
+  },
+  {
+    "slug": "figo",
+    "name": "Figo",
+    "kind": "Pies",
+    "title": "Figo i morska wyprawa",
+    "split": 500,
+    "story": "Przy brzegu Figo spotkał żółwika, który nie mógł odnaleźć morza. Ruszyli wzdłuż strumienia. Nos Figa i cierpliwość nowego przyjaciela okazały się najlepszym kompasem."
+  },
+  {
+    "slug": "olek",
+    "name": "Olek",
+    "kind": "Dziecko",
+    "title": "Olek i zagubiona gwiazda",
+    "split": 456,
+    "story": "Gwiazda w dłoniach Olka mrugała coraz słabiej. Mały robot znał drogę do obserwatorium, lecz przed nimi wisiał uszkodzony most. Olek postanowił znaleźć bezpieczne przejście."
+  },
+  {
+    "slug": "julia",
+    "name": "Julia",
+    "kind": "Dorosła bohaterka",
+    "title": "Julia i ogród sekretów",
+    "split": 432,
+    "story": "Za starym murem Julia odnalazła ogród, w którym kwiaty świeciły po zmroku. Złoty klucz pasował do małej bramy. Po drugiej stronie czekała niespodzianka dla każdego, kto potrafił słuchać."
+  },
+  {
+    "slug": "luna",
+    "name": "Luna",
+    "kind": "Kot",
+    "title": "Luna i nocne latarnie",
+    "split": 412,
+    "story": "Na dachach miasteczka gasły kolejne latarnie. Luna podążyła za świetlikiem i poprosiła sowę o wskazówkę. Wspólnie odkryli most prowadzący do źródła nocnego światła."
+  }
+]

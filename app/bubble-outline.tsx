@@ -1,0 +1,2 @@
+import {speechBubblePath} from '@/lib/bubble-shape.mjs';
+export default function BubbleOutline({box}:{box?:{x:number;y:number;width:number;height:number;speaker?:{x:number;y:number}}}){const target=box?.speaker?{x:(box.speaker.x-box.x)/box.width,y:(box.speaker.y-box.y)/box.height}:null;return <svg aria-hidden="true" className="bubble-outline" viewBox="0 0 100 100" preserveAspectRatio="none"><path d={speechBubblePath(100,100,target)} fill="white" stroke="#0e1313" strokeWidth="1.5" vectorEffect="non-scaling-stroke"/></svg>;}

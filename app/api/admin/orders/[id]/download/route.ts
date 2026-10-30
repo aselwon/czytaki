@@ -1,0 +1,4 @@
+import {adminApiError,adminHeaders,requireAdmin} from "@/lib/server/admin";
+import {findOrder,HttpError,infrastructure} from "@/lib/server/runtime";
+export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){try{await requireAdmin(req);const r=await findOrder((await params).id);if(!r.pdf_key)throw new HttpError(404,"PDF nie jest jeszcze gotowy.");const object=await infrastructure().BUCKET.get(r.pdf_key);if(!object)throw new HttpError(404,"Nie znaleziono pliku PDF.");const inline=new URL(req.url).searchParams.get("view")==="1";return new Response(object.body,{headers:adminHeaders({"Content-Type":"application/pdf","Content-Disposition":`${inline?"inline":"attachment"}; filename=${orderFile(r.id)}.pdf`,"Content-Security-Policy":"frame-ancestors 'none'"})});}catch(e){return adminApiError(e);}}
+function orderFile(id:string){return `czytaki-${id.slice(0,8)}`;}

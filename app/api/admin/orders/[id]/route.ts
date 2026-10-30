@@ -1,0 +1,3 @@
+import {adminApiError,adminHeaders,orderNumber,requireAdmin} from "@/lib/server/admin";
+import {findOrder,settings,story} from "@/lib/server/runtime";
+export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){try{await requireAdmin(req);const r=await findOrder((await params).id),p=settings(r),b=story(r);return Response.json({id:r.id,number:orderNumber(r),createdAt:r.created_at,updatedAt:r.updated_at,settings:p,book:b,status:r.status,generated:r.generated,amount:r.amount,currency:r.currency,paymentStatus:r.payment_status,deliveryStatus:r.delivery_status,email:r.email,stripeSession:r.stripe_session,emailId:r.email_id,pdfAvailable:!!r.pdf_key},{headers:adminHeaders()});}catch(e){return adminApiError(e);}}

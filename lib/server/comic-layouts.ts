@@ -1,7 +1,7 @@
 // Coordinates are measured from the top-left of the 500 × 735 pt illustration.
 // The image prompt and PDF renderer use the same layout so lettering stays in
 // quiet space instead of being painted over a face or an important action.
-export type BubbleSlot={x:number;y:number;width:number;height:number};
+export type BubbleSlot={x:number;y:number;width:number;height:number;speaker?:{x:number;y:number}};
 export type ComicLayout={name:string;composition:string;bubbles:readonly BubbleSlot[]};
 
 const layouts:readonly ComicLayout[]=[

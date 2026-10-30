@@ -1,0 +1,8 @@
+.bubble-outline{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.fitted-bubble-copy{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:1;fill:#0e1313}
+.comic-preview .comic-lettering.dialogue,.comic-preview .comic-text.dialogue,.editable-bubble.dialogue{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible;padding:0;isolation:isolate}
+.bubble-copy,.editable-bubble>span{position:relative;z-index:1}
+.comic-lettering.dialogue>.bubble-copy,.editable-bubble.dialogue>span{position:absolute;left:12%;top:43%;width:76%;transform:translateY(-50%)}
+.comic-template-preview.embedded-bubbles .comic-lettering{padding:0}
+.editable-bubble.dialogue>i{z-index:2}
+.comic-lettering.dialogue.speaker-linked>.bubble-copy,.editable-bubble.dialogue.speaker-linked>span{top:50%;left:19%;width:62%}

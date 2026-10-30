@@ -24,10 +24,17 @@ export function comicTemplateIndex(seed:string,page:number){let hash=0;for(const
 export function comicLayoutPrompt(index:number){
  const layout=comicLayout(index);
  const spaces=layout.bubbles.map((box,i)=>`zone ${i+1}: left ${Math.round(box.x/5)}%, top ${Math.round(box.y/7.5)}%, width ${Math.round(box.width/5)}%, height ${Math.round(box.height/7.5)}%`).join("; ");
- return `${layout.name}: ${layout.composition} The application will overlay five opaque speech bubbles after generation. Reserve low-detail background in these zones: ${spaces}. Keep every face, head, hand, paw, character, important object and crucial action outside those zones. Draw NO speech bubbles, white blobs, borders, captions or text yourself. Reading order is top to bottom. No white gutters, rectangular frames, panel grids or tiled pictures.`;
+ return `${layout.name}: ${layout.composition} The application will overlay five opaque speech bubbles and a narrative strip after generation. Reserve low-detail background in these zones: ${spaces}, plus the bottom 9% of the page for the narrative strip. Keep every face, head, hand, paw, character, important object and crucial action outside those zones. Draw NO speech bubbles, white blobs, borders, captions or text yourself. Reading order is top to bottom. No white gutters, rectangular frames, panel grids or tiled pictures.`;
 }
 // Normalized overlay rectangles shared by the live preview and PDF renderer.
 // The artwork never owns these bubbles, so placement cannot drift between pages.
 export type LetteringBox=BubbleSlot;
 export function comicLetteringBoxes(index:number):LetteringBox[]{return comicLayout(index).bubbles.map(box=>({x:box.x/500,y:box.y/750,width:box.width/500,height:box.height/750}));}
 export function templateTail(box:BubbleSlot){const direction=box.x+box.width/2<250?1:-1;const x=box.x+box.width*(direction===1?.68:.32),y=box.y+box.height*.87;return [[x-9,y],[x+9,y],[x+direction*23,y+28]];}
+export function comicNarrativeTeaser(text:string,max=260){
+ const clean=text.replace(/\s+/g," ").trim();if(clean.length<=max)return clean;
+ const sentences=clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[clean];let result="";
+ for(const sentence of sentences){const next=(result+" "+sentence.trim()).trim();if(next.length>max)break;result=next;if(sentences.indexOf(sentence)>=1)break;}
+ if(result.length>=Math.min(80,max*.35))return result;
+ const prefix=clean.slice(0,max-1),boundary=prefix.lastIndexOf(" ");return (boundary>max*.65?prefix.slice(0,boundary):prefix).trimEnd()+"…";
+}

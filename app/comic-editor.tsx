@@ -1,7 +1,9 @@
 "use client";
+import BubbleOutline from "./bubble-outline";
+import BubbleCopy from "./bubble-copy";
 import {useEffect,useMemo,useRef,useState,type KeyboardEvent as ReactKeyboardEvent,type PointerEvent as ReactPointerEvent} from "react";
 import {ArrowLeft,CheckCircle2,Download,Loader2,Save} from "lucide-react";
-import {comicLayouts} from "@/lib/comic-layouts";
+import {comicLayouts,comicNarrativeTeaser} from "@/lib/comic-layouts";
 import type {ComicEditorPayload,ComicEditorScene} from "@/lib/product";
 
 type DragState={mode:"move"|"resize";index:number;pointerId:number;startX:number;startY:number;origin:ComicEditorScene["lettering"][number];width:number;height:number};
@@ -29,7 +31,7 @@ export default function ComicEditor({orderId}:{orderId:string}){
  }
  function normalizeBox(next:ComicEditorScene["lettering"][number]){
   const width=clamp(next.width,.12,.7),height=clamp(next.height,.055,.3);
-  return{x:clamp(next.x,0,1-width),y:clamp(next.y,0,1-height),width,height};
+  return{...next,x:clamp(next.x,0,1-width),y:clamp(next.y,0,1-height),width,height};
  }
  function updateBox(index:number,patch:Partial<ComicEditorScene["lettering"][number]>){
   updateScene(current=>({...current,lettering:current.lettering.map((item,i)=>i===index?normalizeBox({...item,...patch}):item)}));
@@ -56,7 +58,7 @@ export default function ComicEditor({orderId}:{orderId:string}){
   updateBox(index,{x:current.x+(event.key==="ArrowRight"?step:event.key==="ArrowLeft"?-step:0),y:current.y+(event.key==="ArrowDown"?step:event.key==="ArrowUp"?-step:0)});
  }
  function applyTemplate(template:number){
-  const layout=comicLayouts[template];updateScene(current=>({...current,comicTemplate:template,lettering:layout.bubbles.map(item=>({x:item.x/500,y:item.y/750,width:item.width/500,height:item.height/750}))}));
+  const layout=comicLayouts[template];updateScene(current=>({...current,comicTemplate:template,lettering:layout.bubbles.map((item,index)=>({x:item.x/500,y:item.y/750,width:item.width/500,height:item.height/750,...(current.lettering[index]?.speaker?{speaker:current.lettering[index].speaker}:{})}))}));
  }
  async function save(){
   if(!data||invalid||saving)return;setSaving(true);setError("");setSaved(false);
@@ -76,10 +78,11 @@ export default function ComicEditor({orderId}:{orderId:string}){
     <div className="editor-help"><b>Przeciągnij dymek</b><span>Złap prawy dolny róg, aby zmienić rozmiar — nawet do 12 × 5,5% planszy. Strzałki przesuwają dokładnie.</span></div>
     <div ref={canvas} className="editor-canvas" onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
      <img src={`/api/orders/${orderId}/art/${page}?v=${data.revision}`} alt={`Ilustracja planszy ${page+1}`}/>
-     {scene!.lettering.map((item,index)=><button type="button" key={index} aria-label={`Dymek ${index+1}`} className={`editable-bubble ${scene!.panels[index].kind} ${selected===index?"selected":""}`} style={{left:`${item.x*100}%`,top:`${item.y*100}%`,width:`${item.width*100}%`,height:`${item.height*100}%`,fontSize:`${Math.max(1.15,Math.min(2.65,item.width*6.1))}cqw`}} onPointerDown={event=>beginDrag(event,index,"move")} onKeyDown={event=>nudge(event,index)} onClick={()=>setSelected(index)}><span>{scene!.panels[index].line}</span><i onPointerDown={event=>beginDrag(event,index,"resize")} aria-hidden/></button>)}
+     {scene!.lettering.map((item,index)=><button type="button" key={index} aria-label={`Dymek ${index+1}`} className={`editable-bubble ${scene!.panels[index].kind} ${item.speaker?"speaker-linked":""} ${selected===index?"selected":""}`} style={{left:`${item.x*100}%`,top:`${item.y*100}%`,width:`${item.width*100}%`,height:`${item.height*100}%`}} onPointerDown={event=>beginDrag(event,index,"move")} onKeyDown={event=>nudge(event,index)} onClick={()=>setSelected(index)}>{scene!.panels[index].kind==="dialogue"&&<BubbleOutline box={item}/>}<BubbleCopy text={scene!.panels[index].line} kind={scene!.panels[index].kind} box={item}/><i onPointerDown={event=>beginDrag(event,index,"resize")} aria-hidden/></button>)}
+     <div className="editable-teaser"><b>ZAJAWKA ROZDZIAŁU</b><span>{comicNarrativeTeaser(scene!.text)}</span></div>
     </div>
    </div>
-   <aside className="editor-controls">
+   <aside className="editor-controls"><div className="control-card teaser-editor"><div className="control-title"><span>Zajawka rozdziału</span><b>bez AI</b></div><label>Tekst narratora<textarea maxLength={550} value={scene!.text} onChange={event=>updateScene(current=>({...current,text:event.target.value}))}/><small>{scene!.text.length} / 550 znaków · w PDF pokażemy zwięzły początek</small></label></div>
     <div className="control-card"><div className="control-title"><span>Dymek {selected+1}</span><b>{percent(box!.width)} × {percent(box!.height)}%</b></div><label>Tekst<textarea maxLength={90} value={scene!.panels[selected].line} onChange={event=>updatePanel({line:event.target.value})}/><small>{scene!.panels[selected].line.length} / 90 znaków</small></label>{crowded&&<p className="editor-warning">Ten tekst może być zbyt ciasny. Powiększ dymek albo skróć wypowiedź, aby czcionka pozostała czytelna.</p>}<label>Rodzaj<select value={scene!.panels[selected].kind} onChange={event=>updatePanel({kind:event.target.value as "dialogue"|"narration"})}><option value="dialogue">Dymek dialogowy</option><option value="narration">Pole narratora</option></select></label><div className="range-grid"><Range label="Położenie X" value={box!.x} max={1-box!.width} onChange={value=>updateBox(selected,{x:value})}/><Range label="Położenie Y" value={box!.y} max={1-box!.height} onChange={value=>updateBox(selected,{y:value})}/><Range label="Szerokość" value={box!.width} min={.12} max={Math.min(.7,1-box!.x)} onChange={value=>updateBox(selected,{width:value})}/><Range label="Wysokość" value={box!.height} min={.055} max={Math.min(.3,1-box!.y)} onChange={value=>updateBox(selected,{height:value})}/></div></div>
     <div className="control-card template-picker"><div className="control-title"><span>Gotowe układy HTML</span><b>bez AI</b></div><p>Zastosuj układ do bieżącej strony, a potem dopasuj każdy dymek ręcznie.</p><div>{comicLayouts.map((layout,index)=><button key={layout.name} className={scene!.comicTemplate===index?"active":""} title={layout.name} onClick={()=>applyTemplate(index)}><span className="mini-template">{layout.bubbles.map((item,i)=><i key={i} style={{left:`${item.x/5}%`,top:`${item.y/7.5}%`,width:`${item.width/5}%`,height:`${item.height/7.5}%`}}/>)}</span><b>{index+1}</b></button>)}</div></div>
     {invalid&&<p className="editor-error">Każdy dymek musi zawierać co najmniej 2 znaki.</p>}{error&&<p className="editor-error">{error}</p>}

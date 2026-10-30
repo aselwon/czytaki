@@ -4,10 +4,11 @@ import "./studio.css";
 import "./hero.css";
 import "./comic.css";
 import "./editor.css";
+import "./bubbles.css";
 
 export const metadata: Metadata = {
   title: "Czytaki — Ze zdjęcia do własnej książeczki",
-  description: "Wgraj zdjęcie dziecka, pupila lub kogoś bliskiego. Stwórz spersonalizowany komiks albo bajkę i zamów gotowy PDF na e-mail.",
+  description: "Wgraj zdjęcie swojego bohatera. Stwórz spersonalizowany komiks albo bajkę i zamów gotowy PDF na e-mail.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

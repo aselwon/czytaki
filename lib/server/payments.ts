@@ -1,23 +1,22 @@
 import {Buffer} from "node:buffer";
 import {z} from "zod";
-import {findOrder,HttpError,infrastructure,runtime,salesReady,story,type OrderRow} from "./runtime";
+import {findOrder,HttpError,infrastructure,runtime,salesReady,settings,story,type OrderRow} from "./runtime";
 import {validPayment,type PaymentSession} from "./payment-validation";
 export async function stripe(path:string,body?:URLSearchParams,idempotency?:string):Promise<PaymentSession>{const key=runtime().STRIPE_SECRET_KEY;if(!key)throw new HttpError(503,"Płatności nie zostały uruchomione.");const r=await fetch("https://api.stripe.com/v1/"+path,{method:body?"POST":"GET",headers:{Authorization:"Bearer "+key,...(body?{"Content-Type":"application/x-www-form-urlencoded"}:{}),...(idempotency?{"Idempotency-Key":idempotency}:{})},body,signal:AbortSignal.timeout(20000)});if(!r.ok){console.error("Stripe request failed",r.status);throw new HttpError(503,"Operator płatności jest chwilowo niedostępny.");}return r.json() as Promise<PaymentSession>;}
 export async function checkoutSession(r:OrderRow,email:string){if(!salesReady())throw new HttpError(503,"Płatności i wysyłka nie zostały jeszcze uruchomione.");if(r.status!=="ready"||!r.pdf_key)throw new HttpError(409,"Najpierw przygotuj gotową książeczkę.");if(r.payment_status==="paid")throw new HttpError(409,"To zamówienie jest już opłacone. Odśwież stronę.");if(r.email&&r.email!==email)throw new HttpError(409,"Dla tego zamówienia zapisano już inny adres e-mail. Dokończ rozpoczętą płatność.");let prior:PaymentSession|null=null;if(r.stripe_session){prior=await stripe("checkout/sessions/"+encodeURIComponent(r.stripe_session));if(prior.status==="open"&&prior.url)return prior.url;if(prior.status==="complete")throw new HttpError(409,"Płatność została zakończona. Odśwież stronę, aby sprawdzić zamówienie.");}
  const e=infrastructure();const base=new URL(e.APP_URL!);if(base.protocol!=="https:"&&!["localhost","127.0.0.1"].includes(base.hostname))throw new HttpError(503,"Adres sklepu wymaga konfiguracji.");await e.DB.prepare("UPDATE orders SET email=COALESCE(email,?),updated_at=? WHERE id=?").bind(email,Date.now(),r.id).run();
- const book=story(r);
+ const book=story(r),product=settings(r);
  const data=new URLSearchParams({
-  mode:"payment",locale:"pl",submit_type:"pay",customer_email:r.email||email,client_reference_id:r.id,"metadata[orderId]":r.id,
+  mode:"payment",locale:"auto",submit_type:"pay",customer_email:r.email||email,client_reference_id:r.id,"metadata[orderId]":r.id,"metadata[order_id]":r.id,"metadata[page_count]":String(product.pages),"payment_intent_data[metadata][orderId]":r.id,"payment_intent_data[metadata][order_id]":r.id,
   "line_items[0][price_data][currency]":r.currency,
   "line_items[0][price_data][unit_amount]":String(r.amount),
   "line_items[0][price_data][product_data][name]":"Czytaki — "+(book?.title||"Twoja książeczka"),
-  "line_items[0][price_data][product_data][description]":"Spersonalizowana książeczka PDF: 8 stron, 6 ilustracji i własna dedykacja.",
+  "line_items[0][price_data][product_data][description]":`Spersonalizowana książeczka PDF: ${product.pages} stron, ${product.pages-2} ilustracji i własna dedykacja.`,
   "line_items[0][quantity]":"1",
-  "custom_text[submit][message]":"Jednorazowa, bezpieczna płatność. Gotowy PDF wyślemy na podany adres e-mail.",
-  "custom_text[after_submit][message]":"Po potwierdzeniu płatności wrócisz do strony pobierania swojej książeczki.",
+  "custom_text[submit][message]":"Cena premierowa. Jednorazowa płatność bez abonamentu. Gotowy PDF wyślemy na podany adres e-mail.",
+  "custom_text[after_submit][message]":"Płatność przyjęta. Wracamy do strony pobierania, a pełny PDF wysyłamy również e-mailem.",
   success_url:base.origin+"/?order="+r.id+"&checkout=success&session_id={CHECKOUT_SESSION_ID}",
   cancel_url:base.origin+"/?order="+r.id,
-  "payment_method_types[0]":"card",
  });
  if(base.protocol==="https:")data.set("line_items[0][price_data][product_data][images][0]",new URL("/stripe-czytaki-payment-upload.jpg",base).href);
  const session=await stripe("checkout/sessions",data,"czytaki-checkout-"+r.id+"-"+(prior?.id||"first"));if(!session.url?.startsWith("https://checkout.stripe.com/"))throw new HttpError(503,"Nie udało się utworzyć bezpiecznej płatności.");await e.DB.prepare("UPDATE orders SET stripe_session=?,updated_at=? WHERE id=?").bind(session.id,Date.now(),r.id).run();return session.url;

@@ -13,6 +13,7 @@
 .comic-template-preview .preview-art{border:0;border-radius:0;container-type:inline-size}
 .comic-template-preview .comic-lettering{position:absolute;display:flex;align-items:center;justify-content:center;padding:1cqw 2cqw;margin:0;background:#fff;border:2px solid #0e1313;border-radius:50%;box-shadow:0 1px 0 #0e131333;color:#0e1313;text-align:center;font:700 2.2cqw/1.1 ComicLettering,sans-serif;white-space:normal;overflow:hidden;overflow-wrap:anywhere}.comic-template-preview .comic-lettering.narration{background:#fff2b5;border-radius:3px}
 .comic-template-preview.embedded-bubbles .comic-lettering{padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;font-weight:400}.comic-template-preview.embedded-bubbles .comic-lettering.narration{background:transparent}
+.comic-narrative-teaser{position:absolute;z-index:4;left:0;right:0;bottom:0;min-height:9%;padding:1.1cqw 2.4cqw 1.3cqw;background:#092b24ed;color:#fff;font:500 1.52cqw/1.18 ComicLettering,sans-serif;overflow:hidden}.comic-narrative-teaser b{display:block;margin-bottom:.45cqw;color:#ffb038;font-size:1.2cqw;letter-spacing:.08em}
 .comic-template-link{display:inline-block;margin:-4px 0 20px;font-weight:800;font-size:15px;text-decoration:underline;text-underline-offset:4px}
 .comic-preview-download{width:100%;justify-content:center;margin:16px 0 0}
 .comic-editor-link{width:100%;margin-top:14px}
