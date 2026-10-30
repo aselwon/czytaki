@@ -3,7 +3,7 @@ import {ZodError} from "zod";
 import {normalizeGeneratedBook,formats,heroRoles,heroRolePrompts,sceneCountForPages,styles,worlds,type ProductInput,type Book} from "../product";
 import {HttpError,runtime} from "./runtime";
 import {comicLayoutPrompt as legacyLayoutPrompt} from "./comic-layouts.ts";
-import {comicLayoutPrompt,comicTemplateIndex,COMIC_LAYOUT_VERSION} from "../comic-layouts.ts";
+import {comicTemplateIndex,COMIC_LAYOUT_VERSION} from "../comic-layouts.ts";
 import {planAdaptiveLettering} from "../adaptive-lettering.ts";
 export {planAdaptiveLettering} from "../adaptive-lettering.ts";
 
@@ -40,14 +40,15 @@ async function openai(path:string,body:BodyInit,json=false,options?:{timeoutMs:n
    if(r.status===403||r.status===404)throw new HttpError(503,"Wybrany model OpenAI nie jest dostępny dla tego projektu.");
    throw new HttpError(503,"Generator nie ukończył tego kroku. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");
   }
-  try{return await r.json() as Record<string,any>;}
+  try{return await r.json() as OpenAIResponse;}
   catch{throw new HttpError(503,"Generator zwrócił niepełną odpowiedź. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");}
  }
  throw new HttpError(503,"Generator nie ukończył tego kroku. Kliknij „Kontynuuj generowanie”, aby spróbować ponownie.");
 }
-function outputText(response:Record<string,any>){return(response.output||[]).flatMap((v:{content?:unknown[]})=>v.content||[]).filter((v:{type?:string})=>v.type==="output_text").map((v:{text:string})=>v.text).join("");}
+type OpenAIResponse={results?:Array<{flagged:boolean}>;output?:Array<{content?:Array<{type?:string;text?:string}>}>;data?:Array<{b64_json?:string}>};
+function outputText(response:OpenAIResponse){return(response.output||[]).flatMap(v=>v.content||[]).filter((v):v is {type:"output_text";text:string}=>v.type==="output_text"&&typeof v.text==="string").map(v=>v.text).join("");}
 function validatedBook(raw:unknown){try{return normalizeGeneratedBook(raw);}catch(e){if(e instanceof ZodError)console.error("Generated book validation failed",e.issues.map(issue=>({path:issue.path.join("."),code:issue.code})));throw e;}}
-export async function moderate(input:unknown){const r=await openai("moderations",JSON.stringify({model:"omni-moderation-latest",input}),true);if(r.results?.some((v:{flagged:boolean})=>v.flagged))throw new HttpError(422,"Nie możemy przygotować historii na podstawie tych materiałów. Wybierz inne zdjęcie lub dedykację.");}
+export async function moderate(input:unknown){const r=await openai("moderations",JSON.stringify({model:"omni-moderation-latest",input}),true);if(r.results?.some(v=>v.flagged))throw new HttpError(422,"Nie możemy przygotować historii na podstawie tych materiałów. Wybierz inne zdjęcie lub dedykację.");}
 
 export async function generateBook(p:ProductInput,photo:Uint8Array,mime:string):Promise<Book>{
  const image="data:"+mime+";base64,"+Buffer.from(photo).toString("base64");

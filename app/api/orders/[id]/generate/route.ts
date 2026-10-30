@@ -16,7 +16,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
   const {DB,BUCKET}=infrastructure();lock=crypto.randomUUID();const now=Date.now();
   const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=?,status='generating',updated_at=? WHERE id=? AND lock_until<? AND status!='ready'").bind(lock,now+300000,now,id,now).run();
   if(!claim.meta.changes)throw new HttpError(409,"Ten krok jest już przygotowywany. Spróbuj ponownie za chwilę.");
-  r=await findOrder(id);const p=settings(r);let b=story(r);
+  r=await findOrder(id);const p=settings(r);const b=story(r);
   if(b?.comicLayoutVersion===1){
    b.comicLayoutVersion=COMIC_LAYOUT_VERSION;
    b.scenes.forEach((scene,i)=>{scene.comicTemplate=comicTemplateIndex(b!.title+p.name,i);delete scene.lettering;});

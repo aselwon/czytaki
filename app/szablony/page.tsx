@@ -1,4 +1,5 @@
 import {comicLayouts,templateTail} from "@/lib/comic-layouts";
+import Link from "next/link";
 import {comicExamplePanels} from "@/lib/comic-example";
 import lettering from "@/lib/assets/comic-flow-lettering.json";
 import ComicPreview from "../comic-preview";
@@ -6,7 +7,7 @@ import "../comic.css";
 import "./templates.css";
 export const metadata={title:"8 układów komiksu — Czytaki"};
 export default function Templates(){return <main className="template-gallery">
- <a href="/" className="template-back">← Wróć do swojej historii</a>
+ <Link href="/" className="template-back">← Wróć do swojej historii</Link>
  <div className="template-intro"><span>WŁASNY KOMIKS</span><h1>Miejsce na słowa.<br/>Cała reszta to przygoda.</h1><p>Osiem układów dymków nakładanych precyzyjnie na gotową ilustrację. Historia płynie przez całą stronę, bez sztywnych kratek i przypadkowych przesunięć.</p></div>
  <section className="template-example"><div><span>PRZYKŁADOWA PLANSZA</span><h2>Tak wygląda historia z nowym układem.</h2><p>Bohater i akcja mają swoje miejsce, a tekst trafia do osobnej, zawsze czytelnej warstwy.</p><a href="/comic-flow-sample.pdf" className="template-pdf">Otwórz przykład w PDF ↗</a><small>Ilustracja demonstracyjna. To przykład kompozycji, a nie przerobiona książeczka z Twojego zamówienia.</small></div><ComicPreview embeddedBubbles imageSrc="/comic-flow-sample.png" order={{id:"sample",status:"ready",generated:6,title:"Leo i podwodna przygoda",name:"Leo",format:"comic",pages:8,sceneCount:6,amount:0,regularAmount:0,currency:"PLN",paymentStatus:"unpaid",deliveryStatus:"none",comicLayoutVersion:1,previewPanels:comicExamplePanels,previewLettering:lettering}}/></section>
  <div className="template-grid">{comicLayouts.map((layout,index)=><figure key={layout.name}>

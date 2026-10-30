@@ -23,6 +23,19 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },
+  {
+    // These effects synchronize browser-only state (font metrics, localStorage,
+    // object URLs, and speech synthesis) after hydration; moving updates into
+    // render would change their timing or make server rendering unsafe.
+    files: ["app/bubble-copy.tsx", "app/experience.tsx", "app/studio.tsx"],
+    rules: { "react-hooks/set-state-in-effect": "off" },
+  },
+  {
+    // The model-context callbacks need the newest state without re-registering
+    // browser tools on every render; the ref is intentionally refreshed here.
+    files: ["app/experience.tsx"],
+    rules: { "react-hooks/refs": "off" },
+  },
 ]);
 
 export default eslintConfig;
