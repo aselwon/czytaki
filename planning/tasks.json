@@ -16,7 +16,7 @@
       "acceptance": ["npm test 82/82.", "Opis przyczyny w PR."],
       "dependsOn": [],
       "tier": "worker",
-      "status": "todo"
+      "status": "review"
     },
     {
       "id": "CZ-02",
