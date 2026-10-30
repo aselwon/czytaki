@@ -7,22 +7,13 @@
     "planner": "mocny model: architektura, płatności, bezpieczeństwo, prompty",
     "worker": "tani model: implementacja według kryteriów"
   },
-  "statuses": [
-    "todo",
-    "in_progress",
-    "review",
-    "done",
-    "blocked"
-  ],
+  "statuses": ["todo", "in_progress", "review", "done", "blocked"],
   "tasks": [
     {
       "id": "CZ-01",
       "title": "Naprawa testu bubble-copy",
       "description": "tests/bubble-copy.test.mjs „shared copy fitting respects both bounds and rejects an impossible glyph” rzuca „Comic bubble text exceeds bounds” z lib/bubble-copy.mjs. Ustal, czy błąd jest w teście, czy w fitBubbleCopy (regresja po zmianach dymków), i napraw bez obniżania asercji.",
-      "acceptance": [
-        "npm test 82/82.",
-        "Opis przyczyny w PR."
-      ],
+      "acceptance": ["npm test 82/82.", "Opis przyczyny w PR."],
       "dependsOn": [],
       "tier": "worker",
       "status": "todo"
@@ -44,114 +35,97 @@
       "id": "CZ-03",
       "title": "CI GitHub Actions",
       "description": "Dodaj .github/workflows/ci.yml: Node 22, npm ci (sprawdź, czy scripts/install-ci.mjs jest potrzebne na ubuntu-latest), npm run lint, npx tsc --noEmit, npm test. Bez sekretów. Opcjonalnie npm run build.",
-      "acceptance": [
-        "Workflow zielony na PR.",
-        "Czas < 10 min."
-      ],
-      "dependsOn": [
-        "CZ-01",
-        "CZ-02"
-      ],
+      "acceptance": ["Workflow zielony na PR.", "Czas < 10 min."],
+      "dependsOn": ["CZ-01", "CZ-02"],
       "tier": "worker",
       "status": "todo"
     },
     {
       "id": "CZ-04",
       "title": "Ewidencja kosztów AI",
-      "description": "Tabela ai_calls (order_id, kind, model, input/output tokens, images, size/quality, cost_cents) i suma na zamówieniu. Cennik modeli w konfiguracji. Zapis przy każdym wywołaniu w lib/server/ai.ts. Widok kosztu w /admin.",
+      "description": "Tabela ai_calls (order_id, kind, model, input/output tokens, images, size/quality, cost_cents) i suma na zamówieniu. Cennik modeli w konfiguracji. Zapis przy każdym wywołaniu w lib/server/ai.ts. Widok kosztu w /admin. Każde wywołanie przyjmuje orderId; bramka assertPaidOrder odrzuca wywołanie, jeśli zamówienie nie ma stanu paid ze zweryfikowanego webhooka Stripe.",
       "acceptance": [
         "Testy z atrapą OpenAI zapisują poprawne koszty.",
-        "Migracja zachowuje dawne zamówienia."
+        "Migracja zachowuje dawne zamówienia.",
+        "Test: wywołanie OpenAI dla nieopłaconego zamówienia rzuca błąd i nie wykonuje fetch."
       ],
-      "dependsOn": [
-        "CZ-03"
-      ],
+      "dependsOn": ["CZ-03"],
       "tier": "planner",
       "status": "todo"
     },
     {
       "id": "CZ-05",
-      "title": "Globalny dzienny i miesięczny limit kosztów",
-      "description": "DAILY_COST_CAP_CENTS i MONTHLY_COST_CAP_CENTS liczone z ai_calls. Po przekroczeniu nowe podglądy → 503 z komunikatem po polsku; opłacone zamówienia mają osobny budżet/pierwszeństwo i są kończone. Alert e-mail do właściciela przy 80%.",
+      "title": "Dzienny limit bezpieczeństwa wydatków OpenAI",
+      "description": "OPENAI_DAILY_COST_CAP_CENTS liczony z ai_calls z atomową rezerwacją szacowanego kosztu przed wywołaniem (D1). Generowanie dotyczy wyłącznie opłaconych zamówień; po osiągnięciu limitu nowe wywołania nie są wysyłane, zamówienia przechodzą w waiting_capacity i wznawiają się po resecie doby (Cron). Alert e-mail do właściciela przy 80% i 100%. Klientowi strona zamówienia pokazuje „przygotowujemy, dostawa do 24 h”.",
       "acceptance": [
-        "Testy przekroczenia limitu dla podglądu i dla opłaconego zamówienia.",
-        "Limit działa atomowo przy równoległych żądaniach (test)."
+        "Testy: limit blokuje wywołania, zamówienie przechodzi w waiting_capacity i wznawia się po resecie.",
+        "Limit działa atomowo przy równoległych żądaniach (test).",
+        "Alerty 80%/100% wysyłane raz na dobę (test z atrapą Resend)."
       ],
-      "dependsOn": [
-        "CZ-04"
-      ],
+      "dependsOn": ["CZ-04"],
       "tier": "worker",
       "status": "todo"
     },
     {
       "id": "CZ-06",
-      "title": "Preview-first: podgląd przed płatnością",
-      "description": "Przed płatnością generuj tylko tekst historii, okładkę i 1 scenę; podgląd ze znakiem wodnym, bez pełnego PDF. Maszyna stanów zamówienia: preview_ready → paid → generating → assembled → delivered. Spójność postaci: pierwsza ilustracja pozostaje referencją dla dalszych scen.",
+      "title": "Podgląd przed płatnością bez płatnego AI",
+      "description": "Usuń wywołania OpenAI z przebiegu przed płatnością. Podgląd = statyczny przykład z szablonu: gotowe ilustracje przykładowe w repo dla formatu/świata/stylu (bez wizerunków prawdziwych osób) + imię, dedykacja i tytuł klienta złożone istniejącym składem. Widoczna etykieta „Przykładowy podgląd — ilustracje z Twoim zdjęciem powstaną po płatności”. Zdjęcie jest tylko zapisywane w prywatnym R2. Maszyna stanów: draft → awaiting_payment → paid → generating → assembled → delivered (+ waiting_capacity, needs_refund). Checkout nie wymaga wygenerowanej treści.",
       "acceptance": [
-        "Test: nieopłacone zamówienie ≤ 2 wywołania obrazów dla 8/15/30 stron.",
-        "Dawne zamówienia nadal działają (test migracji).",
-        "Checkout nie wymaga już gotowego PDF."
+        "Test: przebieg zdjęcie → podgląd → checkout przy zablokowanym fetch do api.openai.com, 0 wywołań OpenAI dla 8/15/30 stron.",
+        "Test renderu etykiety podglądu przykładowego.",
+        "Dawne zamówienia nadal działają (test migracji)."
       ],
-      "dependsOn": [
-        "CZ-04"
-      ],
+      "dependsOn": ["CZ-04"],
       "tier": "planner",
       "status": "todo"
     },
     {
       "id": "CZ-07",
       "title": "Generowanie po płatności i dostawa",
-      "description": "Webhook po weryfikacji uruchamia wznawialne generowanie pozostałych scen (Queue lub ctx.waitUntil + ponowienia/Cron), składanie PDF i wysyłkę Resend po zakończeniu. Po N nieudanych próbach status needs_refund w /admin i alert do właściciela. Strona zamówienia pokazuje postęp.",
+      "description": "Zweryfikowany webhook checkout.session.completed (kwota, waluta) ustawia paid i uruchamia wznawialny pipeline (Queue lub ctx.waitUntil + Cron): moderacja zdjęcia i danych, tekst historii, wszystkie ilustracje z moderacją, skład PDF, wysyłka Resend. Wszystko przez bramkę z CZ-04/CZ-05. Odrzucenie przez moderację lub N nieudanych prób → needs_refund w /admin i alert do właściciela. Strona zamówienia pokazuje postęp.",
       "acceptance": [
-        "Testy: sukces, błąd w połowie + wznowienie, podwójny webhook bez duplikatu generowania i e-maila, needs_refund.",
+        "Testy: sukces, błąd w połowie + wznowienie, podwójny webhook bez duplikatu generowania i e-maila, needs_refund po moderacji.",
         "Istniejące testy webhooka i dostawy zielone."
       ],
-      "dependsOn": [
-        "CZ-06"
-      ],
+      "dependsOn": ["CZ-05", "CZ-06"],
       "tier": "planner",
       "status": "todo"
     },
     {
       "id": "CZ-08",
       "title": "Bezpieczeństwo treści dla dzieci",
-      "description": "Moderacja każdej wygenerowanej ilustracji (omni-moderation-latest z obrazem), twarde blokady kategorii (np. sexual/minors) bez ponowień, reguły w promptach (wiek, przemoc, strach, marki). Zestaw ≥20 przypadków w tests/fixtures/safety/ sprawdzany offline z atrapą.",
+      "description": "Przed płatnością (bez OpenAI): lokalna lista blokowanych słów/wzorców dla imion, dedykacji i opisów oraz walidacja typu i rozmiaru zdjęcia. Po płatności: moderacja zdjęcia, danych i każdej ilustracji (omni-moderation-latest), twarde blokady kategorii (np. sexual/minors) bez ponowień, reguły w promptach (wiek, przemoc, strach, marki). Zestaw ≥20 przypadków w tests/fixtures/safety/ sprawdzany offline z atrapą.",
       "acceptance": [
+        "Test: lokalny filtr przed płatnością blokuje przypadki z fixture bez wywołań sieciowych.",
         "Testy: odrzucona ilustracja → ponowienie → błąd bez pokazania obrazu.",
         "Twarda blokada bez ponowienia.",
         "Dokument docs/content-safety.md."
       ],
-      "dependsOn": [
-        "CZ-03"
-      ],
+      "dependsOn": ["CZ-03"],
       "tier": "planner",
       "status": "todo"
     },
     {
       "id": "CZ-09",
       "title": "Retencja i usuwanie danych (RODO)",
-      "description": "Cron Trigger: usuń zdjęcie źródłowe porzuconych/nieudanych zamówień po 24 h, ilustracje i PDF po RETENTION_DAYS (domyślnie 30). Usuwanie na żądanie: link z podpisanym tokenem w e-mailu i akcja w /admin. Usuwa rekordy D1 i obiekty R2.",
+      "description": "Cron Trigger: usuń automatycznie zdjęcie źródłowe każdego zamówienia najpóźniej 7 dni po przesłaniu (PHOTO_RETENTION_DAYS=7; wcześniej po złożeniu PDF jak dotąd), ilustracje i PDF po RETENTION_DAYS (domyślnie 30). Usuwanie na żądanie: link z podpisanym tokenem w e-mailu i akcja w /admin. Usuwa rekordy D1 i obiekty R2.",
       "acceptance": [
         "Testy zadania czyszczącego z D1/R2 w pamięci.",
         "Test usunięcia na żądanie (w tym nieprawidłowy token → 403)."
       ],
-      "dependsOn": [
-        "CZ-03"
-      ],
+      "dependsOn": ["CZ-03"],
       "tier": "worker",
       "status": "todo"
     },
     {
       "id": "CZ-10",
       "title": "Regulamin, polityka prywatności, zgody",
-      "description": "Szkice stron /regulamin i /prywatnosc (OpenAI jako podmiot przetwarzający, retencja, brak gwarancji podobieństwa, zwroty), linki w stopce i przy checkout. Treść do akceptacji właściciela, oznaczona jako szkic.",
+      "description": "Szkice stron /regulamin i /prywatnosc (OpenAI jako podmiot przetwarzający, zdjęcie przekazywane do OpenAI dopiero po płatności, automatyczne usunięcie zdjęcia po 7 dniach, retencja ilustracji i PDF, brak gwarancji podobieństwa, zwroty), linki w stopce i przy checkout. Treść do akceptacji właściciela, oznaczona jako szkic.",
       "acceptance": [
         "Strony renderują się i są podlinkowane.",
         "Zgoda na regulamin wymagana przed checkout (test)."
       ],
-      "dependsOn": [
-        "CZ-09"
-      ],
+      "dependsOn": ["CZ-09"],
       "tier": "planner",
       "status": "todo"
     },
@@ -163,24 +137,34 @@
         "Test zielony w CI.",
         "Brak wywołań sieciowych poza localhost (test blokady)."
       ],
-      "dependsOn": [
-        "CZ-07"
+      "dependsOn": ["CZ-07"],
+      "tier": "worker",
+      "status": "todo"
+    },
+    {
+      "id": "CZ-17",
+      "title": "Usunięcie zależności od ChatGPT Sites",
+      "description": "Usuń app/chatgpt-auth.ts i scripts/sites-env.mjs oraz wszystkie odwołania (importy, skrypty npm, zmienne środowiskowe, dokumentacja). Zastąp ewentualne użycia: logowanie /admin hasłem + Cloudflare Access, zmienne z .env.local / wrangler secrets. Bez zmian zachowania dla klienta.",
+      "acceptance": [
+        "Pliki usunięte, brak odwołań do chatgpt-auth i sites-env (grep).",
+        "npm test, npx tsc --noEmit, npm run lint i npm run build zielone.",
+        "/admin nadal wymaga hasła (test)."
       ],
+      "dependsOn": ["CZ-03"],
       "tier": "worker",
       "status": "todo"
     },
     {
       "id": "CZ-12",
-      "title": "Hosting na koncie Cloudflare właściciela",
-      "description": "Przygotuj (nie wdrażaj) konfigurację dla konta 2791466c5820cfd886aad95e0d3ef948: wrangler config, D1/R2, migracje, publiczna trasa webhooka, Cloudflare Access na /admin* i /api/admin/*, usunięcie zależności od ChatGPT Sites (app/chatgpt-auth.ts, scripts/sites-env.mjs) lub uzasadnienie pozostawienia. Instrukcja w CLOUDFLARE.md. Decyzja o koncie należy do właściciela.",
+      "title": "Przeniesienie hostingu na konto Cloudflare 2791466c5820cfd886aad95e0d3ef948",
+      "description": "Przygotuj (nie wdrażaj) konfigurację dla konta właściciela 2791466c5820cfd886aad95e0d3ef948: nowe D1 i R2 na tym koncie (nazwy, migracje od zera), aktualizacja cloudflare.production.json i wrangler config (usuń konto 130aa5101f2a9a9e790f166b0f54abae), publiczna trasa webhooka Stripe, Cloudflare Access na /admin* i /api/admin/*, Cron Triggers (retencja, wznawianie). Instrukcja w CLOUDFLARE.md. Tworzenie zasobów i wdrożenie wykonuje właściciel.",
       "acceptance": [
-        "Instrukcja krok po kroku w CLOUDFLARE.md.",
+        "Instrukcja krok po kroku w CLOUDFLARE.md (w tym wrangler d1 create / r2 bucket create).",
+        "W repo brak odwołań do konta 130aa5101f2a9a9e790f166b0f54abae (grep).",
         "npm run build:cloudflare OK lokalnie.",
         "Lista sekretów do ustawienia (bez wartości)."
       ],
-      "dependsOn": [
-        "CZ-03"
-      ],
+      "dependsOn": ["CZ-03", "CZ-17"],
       "tier": "planner",
       "status": "todo"
     },
@@ -192,26 +176,19 @@
         "Odtworzenie przetestowane lokalnie na .wrangler/state.",
         "Instrukcja w CLOUDFLARE.md."
       ],
-      "dependsOn": [
-        "CZ-12"
-      ],
+      "dependsOn": ["CZ-12"],
       "tier": "worker",
       "status": "todo"
     },
     {
       "id": "CZ-14",
       "title": "Pełny zakup w trybie testowym + pomiar kosztu",
-      "description": "Scenariusz dla właściciela na hostingu z kluczami testowymi Stripe i Resend: ≥2 zamówienia na wariant 8/15/30. Agent przygotowuje checklistę i skrypt odczytu kosztów z ai_calls; uruchomienie (płatne generowanie OpenAI) za zgodą właściciela i w limicie. Wynik w docs/costs.md.",
+      "description": "Scenariusz dla właściciela na hostingu z kluczami testowymi Stripe i Resend: ≥2 zamówienia na wariant 8/15/30. Testowa płatność odblokowuje prawdziwe generowanie OpenAI (płatne) — uruchamia właściciel, w dziennym limicie bezpieczeństwa. Agent przygotowuje checklistę i skrypt odczytu kosztów z ai_calls. Wynik w docs/costs.md.",
       "acceptance": [
-        "docs/costs.md: koszt podglądu i pełnej książki per wariant, marża.",
+        "docs/costs.md: koszt podglądu (0 zł płatnego AI) i pełnej książki per wariant, marża.",
         "Raport przebiegu ze zrzutami."
       ],
-      "dependsOn": [
-        "CZ-05",
-        "CZ-07",
-        "CZ-08",
-        "CZ-12"
-      ],
+      "dependsOn": ["CZ-05", "CZ-07", "CZ-08", "CZ-12"],
       "tier": "planner",
       "status": "todo"
     },
@@ -222,9 +199,7 @@
       "acceptance": [
         "Punkty odhaczone w CHECKLIST.md z dowodami albo przeniesione jako odłożone za zgodą właściciela."
       ],
-      "dependsOn": [
-        "CZ-03"
-      ],
+      "dependsOn": ["CZ-03"],
       "tier": "worker",
       "status": "todo"
     },
@@ -235,15 +210,21 @@
       "acceptance": [
         "Checklist w docs/go-live.md zatwierdzona przez właściciela."
       ],
-      "dependsOn": [
-        "CZ-09",
-        "CZ-10",
-        "CZ-11",
-        "CZ-13",
-        "CZ-14",
-        "CZ-15"
-      ],
+      "dependsOn": ["CZ-09", "CZ-10", "CZ-11", "CZ-13", "CZ-14", "CZ-15"],
       "tier": "planner",
+      "status": "todo"
+    },
+    {
+      "id": "CZ-18",
+      "title": "Opcjonalny podgląd z darmowego Workers AI",
+      "description": "Opcjonalnie, za flagą PREVIEW_WORKERS_AI=false domyślnie: niskiej jakości podgląd 1 ilustracji z Cloudflare Workers AI (darmowy model, np. flux-1-schnell, bez modeli wymagających płatnej metody rozliczeń) na koncie 2791466c5820cfd886aad95e0d3ef948, oznaczony „Szkic poglądowy niskiej jakości”. Twardy stop PREVIEW_DAILY_NEURON_CAP w darmowym przydziale; po limicie lub błędzie fallback do statycznego przykładu. Przydział 10 000 neuronów/dobę jest wspólny z HireOS — włączenie wymaga decyzji właściciela o podziale limitu.",
+      "acceptance": [
+        "Test: po osiągnięciu limitu lub błędzie podgląd wraca do statycznego przykładu.",
+        "Test: brak wywołań OpenAI w tej ścieżce.",
+        "Flaga domyślnie wyłączona."
+      ],
+      "dependsOn": ["CZ-06", "CZ-12"],
+      "tier": "worker",
       "status": "todo"
     }
   ]
