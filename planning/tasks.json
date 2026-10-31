@@ -192,7 +192,7 @@
       ],
       "dependsOn": ["CZ-05", "CZ-07", "CZ-08", "CZ-12"],
       "tier": "planner",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "CZ-15",
@@ -214,7 +214,7 @@
       ],
       "dependsOn": ["CZ-09", "CZ-10", "CZ-11", "CZ-13", "CZ-14", "CZ-15"],
       "tier": "planner",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "CZ-18",

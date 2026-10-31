@@ -49,7 +49,7 @@ Z tego powodu CI (`.github/workflows/ci.yml`) **nie zostało jeszcze dodane** �
 - Każda zmiana zachowania ma test w `tests/`. Testy nie wykonują zapytań sieciowych: OpenAI, Stripe i Resend zawsze przez atrapy.
 - Zmiany schematu tylko przez migracje Drizzle (`npm run db:generate`) z zachowaniem dawnych zamówień.
 - Operacje płatności, generowania i wysyłki muszą pozostać idempotentne i odporne na ponowienia (wzorce w `lib/server/payments.ts`).
-- Każde wywołanie OpenAI przechodzi przez bramkę, która wymaga zamówienia opłaconego zweryfikowanym webhookiem Stripe, zapisuje koszt i pilnuje dziennego limitu bezpieczeństwa (CZ-04/CZ-05). Kod przed płatnością nie może importować ani wywoływać klienta OpenAI.
+- Każde wywołanie OpenAI przechodzi przez bramkę, która wymaga zamówienia opłaconego zweryfikowanym webhookiem Stripe, zapisuje koszt i pilnuje dziennego limitu bezpieczeństwa **5 zł/dobę** (`OPENAI_DAILY_COST_CAP_GROSZE=500`, doba Europe/Warsaw), egzekwowanego w kodzie bramki, nie tylko w dokumentacji (CZ-04/CZ-05). Kod przed płatnością nie może importować ani wywoływać klienta OpenAI.
 - Tekst dla klienta po polsku (z obsługą obecnych walut), identyfikatory po angielsku.
 - Nie obniżaj progów testów ani nie wyłączaj reguł lint, żeby przejść CI. Wyjątek reguły tylko z komentarzem uzasadniającym.
 - Zadanie kończy się, gdy spełnia `acceptance`, a `npm test`, `npx tsc --noEmit` i `npm run lint` są zielone (skill `full-stop`).
@@ -57,7 +57,8 @@ Z tego powodu CI (`.github/workflows/ci.yml`) **nie zostało jeszcze dodane** �
 ## Czego agentom nie wolno
 
 - Commitować ani wypisywać sekretów (`.env.local`, klucze OpenAI/Stripe/Resend, `ADMIN_PASSWORD`). `.env*` jest ignorowany i tak ma zostać.
-- Wdrażać (`npm run deploy:cloudflare`, `wrangler deploy`), zmieniać sekretów, D1/R2 ani DNS. Wdrożenie wykonuje właściciel.
+- Wdrażać ręcznie (`npm run deploy:cloudflare`, `wrangler deploy`), zmieniać sekretów, D1/R2 ani DNS. Wdrożenie produkcyjne wykonuje harness na VPS automatycznie po merge do `main` z zielonym CI (tylko gdy właściciel dostarczył token Cloudflare) albo właściciel.
+- Wpisywać prawdziwych kluczy. Zadanie, które wymaga kroku wyłącznie dla człowieka (prawdziwe klucze Stripe/OpenAI/Resend, płatny test, go-live), zostaje `blocked` z jasną notatką w `planning/blocked.md`.
 - Wysyłać e-maili do prawdziwych osób, tworzyć prawdziwych transakcji (Stripe live), zwrotów ani usuwać prawdziwych zamówień.
 - Wywoływać płatnych API (OpenAI) w pracy rozwojowej: limit **0 zł**, tylko atrapy. Pomiar kosztu książki (CZ-14) uruchamia właściciel.
 - Wdrażać na konto Cloudflare inne niż konto właściciela `2791466c5820cfd886aad95e0d3ef948`.
