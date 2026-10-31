@@ -27,16 +27,16 @@ const compiled=await build({entryPoints:[root+'app/api/orders/[id]/generate/rout
  }
 }]});
 const {POST}=await import('data:text/javascript;base64,'+Buffer.from(compiled.outputFiles[0].text).toString('base64'));
-function setup(t,{cached=false,photo=true,locked=false}={}){
+function setup(t,{cached=false,photo=true,locked=false,paid=true,verified=true,status="generating"}={}){
  const db=new DatabaseSync(':memory:');
  db.exec('CREATE TABLE orders (id TEXT PRIMARY KEY,status TEXT,generated INTEGER,book TEXT,photo_key TEXT,photo_type TEXT,lock_token TEXT,lock_until INTEGER,updated_at INTEGER)');
  const book={title:'Test',comicLayoutVersion:2,scenes:[{title:'Testowa scena'}]};
- db.prepare('INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?)').run('fixture','generating',0,JSON.stringify(book),photo?'photo.jpg':null,'image/jpeg',null,locked?Date.now()+300000:0,0);
+ db.prepare('INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?)').run('fixture',status,0,JSON.stringify(book),photo?'photo.jpg':null,'image/jpeg',null,locked?Date.now()+300000:0,0);
  const objects=new Map();
  const imageKey='orders/fixture/comic-overlay-v2/scene-0.jpg';
  if(cached)objects.set(imageKey,new Uint8Array([1,2,3]));
  if(photo)objects.set('photo.jpg',new Uint8Array([4,5,6]));
- const state={images:0,analyses:0,failAnalysis:false,objects,imageKey,order:()=>({...db.prepare('SELECT * FROM orders').get()})};
+ const state={images:0,analyses:0,failAnalysis:false,objects,imageKey,order:()=>({...db.prepare('SELECT * FROM orders').get(),payment_status:paid?'paid':'unpaid',payment_verified_at:verified?1:null})};
  state.env={OPENAI_API_KEY:'offline-fixture-not-a-key',DB:{prepare(sql){return {bind(...args){return {async run(){return {meta:{changes:Number(db.prepare(sql).run(...args).changes)}};}};}};}},BUCKET:{
   async get(key){const bytes=objects.get(key);return bytes?{async arrayBuffer(){return bytes.buffer;}}:null;},
   async put(key,bytes){objects.set(key,bytes);}
@@ -71,4 +71,19 @@ test('an active generation lock rejects another request before AI work',async t=
  const s=setup(t,{locked:true});
  assert.equal((await s.run()).status,409);
  assert.equal(s.images,0);assert.equal(s.analyses,0);assert.ok(s.order().lock_until>Date.now());
+});
+
+for(const options of [{paid:false},{verified:false}])test('generation rejects unverified payment before cached art or AI '+JSON.stringify(options),async t=>{
+ const s=setup(t,{...options,cached:true});
+ assert.equal((await s.run()).status,403);
+ assert.equal(s.images,0);assert.equal(s.analyses,0);assert.equal(s.order().generated,0);
+});
+
+for(const status of ['waiting_capacity','needs_refund'])test('generation respects suspended state '+status,async t=>{
+ const s=setup(t,{status});assert.equal((await s.run()).status,409);
+ assert.equal(s.images,0);assert.equal(s.analyses,0);assert.equal(s.order().status,status);
+});
+for(const status of ['ready','assembled','delivered'])test('completed book generation is idempotent '+status,async t=>{
+ const s=setup(t,{status});assert.equal((await s.run()).status,200);
+ assert.equal(s.images,0);assert.equal(s.analyses,0);assert.equal(s.order().status,status);
 });
