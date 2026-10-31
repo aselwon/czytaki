@@ -7,11 +7,12 @@ const compiled=await build({entryPoints:[root+'app/api/orders/[id]/generate/rout
  name:'offline-generation',setup(build){
   build.onResolve({filter:/^@\/lib\/server\/(runtime|ai|pdf)$/},args=>({path:args.path.split('/').pop(),namespace:'offline'}));
   build.onResolve({filter:/\.ttf\?inline$/},()=>({path:'font',namespace:'offline'}));
-  build.onLoad({filter:/.*/,namespace:'offline'},args=>({contents:{
+  build.onLoad({filter:/.*/,namespace:'offline'},args=>({resolveDir:root,contents:{
    font:'export default "data:font/ttf;base64,AA==";',
    pdf:'export const createBookPdf=()=>{throw new Error("Unexpected PDF step");};',
-   ai:`export const generateBook=()=>{throw new Error('Unexpected story generation');};
-       export const generateIllustration=async()=>{globalThis.__resume.images++;return new Uint8Array([1,2,3]);};
+   ai:`import {ContentSafetyError} from '${root}lib/server/content-safety.ts';
+       export const generateBook=()=>{throw new Error('Unexpected story generation');};
+       export const generateIllustration=async()=>{globalThis.__resume.images++;if(globalThis.__resume.unsafe)throw new ContentSafetyError(true);return new Uint8Array([1,2,3]);};
        export const locateComicSpeech=async()=>{globalThis.__resume.analyses++;if(globalThis.__resume.failAnalysis)throw new Error('Simulated layout failure');return Array.from({length:5},()=>({x:.1,y:.1,width:.2,height:.1}));};`,
    runtime:`export class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
     export const runtime=()=>globalThis.__resume.env;
@@ -71,4 +72,13 @@ test('an active generation lock rejects another request before AI work',async t=
  const s=setup(t,{locked:true});
  assert.equal((await s.run()).status,409);
  assert.equal(s.images,0);assert.equal(s.analyses,0);assert.ok(s.order().lock_until>Date.now());
+});
+
+test('safety rejection stores no image and permanently blocks request retries',async t=>{
+ const s=setup(t);s.unsafe=true;
+ assert.equal((await s.run()).status,422);
+ assert.equal(s.objects.has(s.imageKey),false);assert.equal(s.analyses,0);
+ assert.equal(s.order().generated,0);assert.equal(s.order().status,'safety_blocked');
+ assert.equal(s.order().lock_until,0);
+ assert.equal((await s.run()).status,422);assert.equal(s.images,1);
 });
