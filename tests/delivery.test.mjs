@@ -25,7 +25,7 @@ function setup(t,overrides={}){
  const db=new DatabaseSync(':memory:');
  db.exec(`CREATE TABLE orders (id TEXT PRIMARY KEY,payment_status TEXT,pdf_key TEXT,email TEXT,
  delivery_status TEXT,email_attempt_at INTEGER,updated_at INTEGER,email_id TEXT,
- stripe_session TEXT,amount INTEGER,currency TEXT,status TEXT,settings TEXT,book TEXT)`);
+ payment_verified_at INTEGER,stripe_session TEXT,amount INTEGER,currency TEXT,status TEXT,settings TEXT,book TEXT)`);
  const row={id:'test-order',payment_status:'paid',pdf_key:'test.pdf',email:'test@example.invalid',delivery_status:'pending',email_attempt_at:null,updated_at:0,email_id:null,stripe_session:'cs_test_fixture',amount:3900,currency:'pln',status:'ready',settings:JSON.stringify({pages:15}),book:JSON.stringify({title:'Testowa przygoda'}),...overrides};
  db.prepare(`INSERT INTO orders (${Object.keys(row).join(',')}) VALUES (${Object.keys(row).map(()=>'?').join(',')})`).run(...Object.values(row));
  const order=()=>({...db.prepare('SELECT * FROM orders WHERE id=?').get(row.id)});
@@ -165,4 +165,15 @@ test('mail failure preserves paid status and subsequent confirmation resumes del
  s.failEmail=false;await confirmAndDeliver(s.order());
  assert.equal(s.order().payment_status,'paid');
  assert.equal(s.order().delivery_status,'sent');
+});
+
+test('only webhook confirmation grants AI eligibility, including an already paid order',async t=>{
+ const s=setup(t);
+ await confirmAndDeliver(s.order());
+ assert.equal(s.order().payment_verified_at,null);
+ await confirmAndDeliver(s.order(),true);
+ const verified=s.order().payment_verified_at;
+ assert.ok(verified>0);
+ await confirmAndDeliver(s.order(),true);
+ assert.equal(s.order().payment_verified_at,verified);
 });

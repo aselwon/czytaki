@@ -11,7 +11,7 @@ const bundled=await build({entryPoints:[root+'app/api/payments/webhook/route.ts'
   build.onResolve({filter:/^@\/lib\/server\/payments$/},()=>({path:'delivery',namespace:'offline'}));
   build.onLoad({filter:/.*/,namespace:'offline'},args=>({contents:args.path==='env'
    ?'export const env=globalThis.__webhookEnv;'
-   :'export const confirmAndDeliver=async order=>globalThis.__webhookConfirm(order);'}));
+   :'export const confirmAndDeliver=async (order,verified)=>globalThis.__webhookConfirm(order,verified);'}));
  }
 }]});
 const {POST}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
@@ -19,7 +19,7 @@ const secret='whsec_offline_fixture',id='11111111-1111-4111-8111-111111111111';
 function setup(){
  const calls={db:0,confirm:0};
  Object.assign(env,{STRIPE_WEBHOOK_SECRET:secret,BUCKET:{},DB:{prepare(){return {bind(){return {async first(){calls.db++;return {id,stripe_session:'cs_fixture'};}};}};}}});
- globalThis.__webhookConfirm=async order=>{assert.deepEqual(order,{id,stripe_session:'cs_fixture'});calls.confirm++;};
+ globalThis.__webhookConfirm=async (order,verified)=>{assert.equal(verified,true);assert.deepEqual(order,{id,stripe_session:'cs_fixture'});calls.confirm++;};
  const event={type:'checkout.session.completed',data:{object:{id:'cs_fixture',metadata:{orderId:id}}}};
  return {calls,event};
 }
