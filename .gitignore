@@ -44,7 +44,12 @@ next-env.d.ts
 /.wrangler/
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/
-/.agents/
+/.agents/*
+# Shared agent skills are versioned (only these two).
+!/.agents/skills/
+/.agents/skills/*
+!/.agents/skills/simplify/
+!/.agents/skills/proof/
 /.codex/
 /outputs/
 /work/
