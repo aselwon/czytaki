@@ -5,7 +5,9 @@ Istniejące repozytorium, bez odrzucania zmian użytkownika. Doprowadzić lokaln
 
 ## Kryteria do sprawdzenia
 - [x] Zdjęcie bez obowiązkowego wyboru osoby/zwierzęcia; zachowanie dawnych zamówień. Test schematu i kontrola przeglądarki.
-- [ ] Jeden spójny kontur dymka w galerii, PDF, podglądzie i edytorze; tekst nie wchodzi na ogonek.
+- [x] Jeden spójny kontur dymka w galerii, PDF, podglądzie i edytorze; tekst nie wchodzi na ogonek. Galeria, podgląd i edytor używają `speechBubblePath`, a test `tests/bubbles.test.mjs` sprawdza zamknięty kontur mieszczący się w zapisanym polu; wspólne dopasowanie kopii wyklucza ogonek z pola tekstu.
+- [x] Zgodność typografii HTML/PDF także dla małych dymków. HTML i PDF korzystają z `fitBubbleCopy` i tego samego pliku Liberation Sans; `tests/bubble-copy.test.mjs` sprawdza łamanie wierszy i wysokość przy małym dymku oraz odrzucenie tekstu niemożliwego do zmieszczenia. Kontrola metryk jest automatyczna, nie wizualna.
+- [ ] Edytor sprawdzony na prawdziwym telefonie wspólnie z właścicielem: gesty przesuwania/zmiany rozmiaru, przewijanie planszy i długi tekst w małym dymku. Wymaga fizycznego urządzenia i wspólnej sesji; nie zastępować testem desktopowym ani emulatorem.
 - [x] Pięć przykładów: poprawione PDF-y i odpowiadające im podglądy. Wszystkie pięć renderów obejrzano po zmianie.
 - [x] Testy, build, kontrola typów i lokalna kontrola formularza. Ostatni pełny przebieg: 79/79; ostatnie tsc i build bez błędów. Aplikacja uruchomiona lokalnie, bez publikacji.
 - [x] Testy pakietów 8/15/30 stron i wybranych błędów generowania bez płatnych wywołań. Zakres: liczba stron, cache ilustracji, ponowienie analizy, brak obrazu, blokada równoległego żądania. Nie obejmuje 28 różnych obrazów AI.
@@ -17,6 +19,7 @@ Istniejące repozytorium, bez odrzucania zmian użytkownika. Doprowadzić lokaln
 Co 30 minut kontynuować od aktualnego stanu. Nie generować płatnie, nie wysyłać maili, nie wykonywać transakcji, nie publikować, nie zmieniać sekretów, nie usuwać zamówień. Nie wyświetlać sekretów ani prywatnych danych. Naprawiać konkretne błędy, nie dopisywać funkcji bez końca. Po zakończeniu lokalnej listy lub dojściu do realnego blokera wstrzymać automatyzację i przekazać wynik.
 
 ## Historia
+- 2026-10-31 (CZ-15): galeria szablonów rysuje dymki tą samą krzywą SVG co podgląd, PDF i edytor; edytor używa regularnej grubości wspólnej czcionki. Testy offline geometrii i dopasowania tekstu pokrywają ograniczenia konturu/pola. Test fizycznego telefonu pozostaje otwarty do wykonania z właścicielem.
 - 2026-09-24: aktywowano automatyczne wznowienie wątku co 30 minut. Rozpoczęto ujednolicenie dymków i formularza bez kategorii.
 - 2026-09-24: dodano wspólną geometrię dymka SVG/PDF, bez osobnego trójkąta. Obejrzano także stronę technicznego PDF z produkcyjnego renderera. Kontrola interaktywnego edytora i telefonu nadal do wykonania.
 - 2026-09-24: zamknięto błąd fail-open: brak kluczy Stripe/Resend nie odblokowuje już nieopłaconych PDF-ów w publicznym środowisku. Pełny darmowy podgląd/edycja tylko przy loopback APP_URL i wyłączonej sprzedaży. Dodano wylogowanie z lokalnego admina.
