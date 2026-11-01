@@ -1,3 +1,4 @@
+import {ContentSafetyError,safetyMessage} from "@/lib/server/content-safety";
 import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
 import {bookSchema} from "@/lib/product";
@@ -13,6 +14,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
  let id:string|undefined,lock:string|undefined;
  try{
   sameOrigin(req);let r=await ownOrder(req,(await params).id);id=r.id;
+  if(r.status==="safety_blocked")throw new HttpError(422,safetyMessage);
   if(!ownerPreviewAllowed()||r.payment_status!=="unpaid"||settings(r).format!=="comic")throw new HttpError(403,"Przeróbka tej książeczki nie jest dostępna.");
   if(story(r)?.comicLayoutVersion===COMIC_LAYOUT_VERSION){const b=story(r)!;return Response.json({...view(r),remakeProgress:b.scenes.length,remakeReady:true});}
   if(r.status!=="ready"||!r.pdf_key)throw new HttpError(409,"Najpierw dokończ książeczkę.");
@@ -61,6 +63,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
   await DB.prepare("UPDATE orders SET lock_token=NULL,lock_until=0,updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();
   return Response.json({...view(await findOrder(id)),remakeProgress:progress,remakeReady:ready},{headers:{"Cache-Control":"no-store"}});
  }catch(e){
+  if(id&&lock&&e instanceof ContentSafetyError)try{await infrastructure().DB.prepare("UPDATE orders SET status='safety_blocked',updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();}catch{}
   if(id&&lock)try{await infrastructure().DB.prepare("UPDATE orders SET lock_token=NULL,lock_until=0,updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();}catch{}
   return apiError(e);
  }

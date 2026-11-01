@@ -62,7 +62,7 @@ function request(path,options={}){return new Request('http://localhost'+path,{..
 for(const pages of [8,15,30])test(`photo → sample → checkout uses no OpenAI (${pages} pages)`,async t=>{
  const s=setup(t);const body=new FormData();
  body.set('settings',JSON.stringify({...product,pages}));
- const bytes=new Uint8Array(128);bytes.set([137,80,78,71]);
+ const bytes=new Uint8Array(128);bytes.set([137,80,78,71,13,10,26,10]);
  body.set('photo',new File([bytes],'synthetic.png',{type:'image/png'}));
  const uploaded=await api.upload(request('/api/orders',{method:'POST',body}));
  assert.equal(uploaded.status,201);const order=await uploaded.json();

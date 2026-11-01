@@ -1,3 +1,4 @@
+import {ContentSafetyError,safetyMessage} from "@/lib/server/content-safety";
 import {hasAssembledBook} from "@/lib/order-state";
 import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
@@ -12,12 +13,13 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
  try{
   sameOrigin(req);
   let r=await ownOrder(req,(await params).id);id=r.id;
+  if(r.status==="safety_blocked")throw new HttpError(422,safetyMessage);
   if(hasAssembledBook(r.status))return Response.json(view(r));
   if(r.payment_status!=="paid"||!r.payment_verified_at)throw new HttpError(403,"Generowanie wymaga płatności potwierdzonej webhookiem.");
   if(["waiting_capacity","needs_refund"].includes(r.status))throw new HttpError(409,"Zamówienie oczekuje na obsługę.");
   if(!runtime().OPENAI_API_KEY)throw new HttpError(503,"Generator AI nie został podłączony.");
   const {DB,BUCKET}=infrastructure();lock=crypto.randomUUID();const now=Date.now();
-  const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=?,status='generating',updated_at=? WHERE id=? AND lock_until<? AND status NOT IN ('ready','assembled','delivered','waiting_capacity','needs_refund')").bind(lock,now+300000,now,id,now).run();
+  const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=?,status='generating',updated_at=? WHERE id=? AND lock_until<? AND payment_status='paid' AND payment_verified_at IS NOT NULL AND status NOT IN ('safety_blocked','ready','assembled','delivered','waiting_capacity','needs_refund')").bind(lock,now+300000,now,id,now).run();
   if(!claim.meta.changes)throw new HttpError(409,"Ten krok jest już przygotowywany. Spróbuj ponownie za chwilę.");
   r=await findOrder(id);const p=settings(r);const b=story(r);
   if(b?.comicLayoutVersion===1){
@@ -69,6 +71,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
   await DB.prepare("UPDATE orders SET lock_token=NULL,lock_until=0,updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();
   return Response.json(view(await findOrder(id)),{headers:{"Cache-Control":"no-store"}});
  }catch(e){
+  if(id&&lock&&e instanceof ContentSafetyError)try{await infrastructure().DB.prepare("UPDATE orders SET status='safety_blocked',updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();}catch{}
   if(id&&lock)try{await infrastructure().DB.prepare("UPDATE orders SET lock_token=NULL,lock_until=0,updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();}catch{}
   return apiError(e);
  }

@@ -23,7 +23,7 @@ function setup(t,{paid=true,verified=true}={}){
  env.BUCKET={};env.OPENAI_API_KEY='offline-fixture';
  const original=globalThis.fetch;
  const state={db,calls:0,response:{results:[{flagged:false}]}};
- globalThis.fetch=async()=>{state.calls++;return Response.json(state.response);};
+ globalThis.fetch=async url=>{state.calls++;return Response.json(url.endsWith('/moderations')&&state.moderation?state.moderation:state.response);};
  t.after(()=>{globalThis.fetch=original;db.close();});
  state.rows=()=>db.prepare('SELECT * FROM ai_calls ORDER BY rowid').all();
  return state;
@@ -35,7 +35,7 @@ for(const opts of [{paid:false},{verified:false},{paid:false,verified:false}])te
  assert.equal(s.calls,0);assert.equal(s.rows().length,0);
 });
 test('moderation is recorded even when content is rejected',async t=>{
- const s=setup(t);s.response={results:[{flagged:true}]};
+ const s=setup(t);s.response={results:[{flagged:true,categories:{violence:true}}]};
  await assert.rejects(ai.moderate('order','fixture'),/materiałów/);
  assert.equal(s.rows()[0].cost_cents,0);assert.equal(s.rows()[0].kind,'moderations');
 });
@@ -48,9 +48,10 @@ test('text fetch records tokens and cost before invalid story parsing',async t=>
 });
 test('image fetch records mixed input usage, output, size and quality',async t=>{
  const s=setup(t);s.response={usage:{input_tokens:3000,output_tokens:4000,input_tokens_details:{text_tokens:1000,image_tokens:2000}},data:[{b64_json:'AQID'}]};
+ s.moderation={results:[{flagged:false,categories:{violence:false}}]};
  const result=await ai.generateIllustration('order',{format:'story',heroRole:'hero',style:'watercolor',age:'6'}, {character:'synthetic',scenes:[{imagePrompt:'forest'}]},0,new Uint8Array([1]),'image/jpeg');
  assert.deepEqual(result,new Uint8Array([1,2,3]));
- const row=s.rows()[0];assert.equal(row.cost_cents,15);assert.equal(row.images,1);assert.equal(row.size,'1024x1024');assert.equal(row.quality,'medium');
+ const [row,moderation]=s.rows();assert.equal(moderation.kind,'moderations');assert.equal(moderation.cost_cents,0);assert.equal(row.cost_cents,15);assert.equal(row.images,1);assert.equal(row.size,'1024x1024');assert.equal(row.quality,'medium');
  assert.equal(s.db.prepare('SELECT ai_cost_cents FROM orders').get().ai_cost_cents,15);
  await ai.finishAiCall({id:row.id,orderId:'order',model:row.model,kind:row.kind},s.response,'completed');
  assert.equal(s.db.prepare('SELECT ai_cost_cents FROM orders').get().ai_cost_cents,15);
