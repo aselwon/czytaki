@@ -10,6 +10,7 @@
     "migrations_dir": "drizzle"
   }],
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "czytaki-private" }],
+  "triggers": { "crons": ["17 2 * * *"] },
   "vars": {
     "SALES_ENABLED": "false",
     "DAILY_GENERATION_LIMIT": "3",
