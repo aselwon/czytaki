@@ -17,6 +17,7 @@
     "db:generate": "drizzle-kit generate",
     "admin:password": "node scripts/admin-password.mjs",
     "cf": "node scripts/cloudflare.mjs",
+    "backup": "node scripts/backup.mjs",
     "build:cloudflare": "CZYTAKI_DEPLOY_TARGET=cloudflare npm run build",
     "deploy:cloudflare": "npm run build:cloudflare && npm run cf -- deploy --config dist/server/wrangler.json"
   },
