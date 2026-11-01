@@ -19,6 +19,10 @@ export const aiCalls=sqliteTable("ai_calls",{
  kind:text("kind").notNull(),model:text("model").notNull(),
  inputTokens:integer("input_tokens"),outputTokens:integer("output_tokens"),
  images:integer("images").notNull().default(0),size:text("size"),quality:text("quality"),
+ budgetDay:text("budget_day"),reservedGrosze:integer("reserved_grosze"),usdPlnRate:text("usd_pln_rate"),costGrosze:integer("cost_grosze"),
  costCents:integer("cost_cents"),status:text("status").notNull().default("pending"),
  createdAt:integer("created_at").notNull(),
 },t=>[index("idx_ai_calls_order").on(t.orderId,t.createdAt)]);
+
+export const aiDailyBudget=sqliteTable("ai_daily_budget",{day:text("day").primaryKey(),reservedGrosze:integer("reserved_grosze").notNull().default(0)});
+export const aiBudgetAlerts=sqliteTable("ai_budget_alerts",{day:text("day").notNull(),threshold:integer("threshold").notNull()},t=>[uniqueIndex("idx_ai_budget_alert_day").on(t.day,t.threshold)]);
