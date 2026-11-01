@@ -5,6 +5,12 @@ import {build} from 'esbuild';
 const root=new URL('../',import.meta.url).pathname;
 const bundled=await build({stdin:{contents:`export * from './lib/server/ai';export * from './lib/server/content-safety';export {POST} from './app/api/orders/route';`,resolveDir:root},bundle:true,write:false,platform:'node',format:'esm',tsconfig:root+'tsconfig.json',plugins:[{
  name:'offline-safety',setup(build){
+  build.onResolve({filter:/^\.\/ai-costs$/},()=>({path:'ai-costs',namespace:'paid-fixture'}));
+  build.onLoad({filter:/.*/,namespace:'paid-fixture'},()=>({contents:`
+   export const assertPaidOrder=id=>{if(id!=='order')throw new Error('Unexpected order');};
+   export const startAiCall=()=>({});
+   export const finishAiCall=()=>{};
+  `}));
   build.onResolve({filter:/^(\.\/runtime|@\/lib\/server\/runtime)$/},()=>({path:'runtime',namespace:'offline'}));
   build.onLoad({filter:/.*/,namespace:'offline'},()=>({contents:`
    export class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
@@ -50,7 +56,7 @@ test('photo validation checks size, MIME and magic bytes offline',async()=>{
  for(const photo of [null,'text',new File([jpeg],'fake.png',{type:'image/png'}),new File([png.slice(0,50)],'small.png',{type:'image/png'}),new File([new Uint8Array(8*1024*1024+1)],'big.jpg',{type:'image/jpeg'}),new File([new Uint8Array(100)],'fake.jpg',{type:'image/jpeg'})])await assert.rejects(validatePhoto(photo),{status:400});
 });
 const imageReply={data:[{b64_json:Buffer.from(jpeg).toString('base64')}]};
-const illustrate=()=>generateIllustration(settings,book,0,jpeg,'image/jpeg');
+const illustrate=()=>generateIllustration('order',settings,book,0,jpeg,'image/jpeg');
 test('rejected illustration retries once then fails without returning pixels',async t=>{
  const rejected={results:[{flagged:true,categories:{violence:true}}]};
  const calls=mockFetch(t,[imageReply,rejected,imageReply,rejected]);
@@ -74,12 +80,12 @@ for(const response of [{},{results:[]},{results:[{flagged:false}]},{results:[{fl
 });
 test('photo and all customer text are moderated before story generation',async t=>{
  const calls=mockFetch(t,[{results:[{flagged:true,categories:{'sexual/minors':true}}]}]);
- await assert.rejects(generateBook(settings,jpeg,'image/jpeg'),{status:422});assert.equal(calls.length,1);
+ await assert.rejects(generateBook('order',settings,jpeg,'image/jpeg'),{status:422});assert.equal(calls.length,1);
  assert.match(calls[0].url,/moderations$/);
  for(const value of [settings.name,settings.heroIdea,settings.dedication])assert.ok(calls[0].body.input[0].text.includes(value));
  assert.match(calls[0].body.input[1].image_url.url,/^data:image\/jpeg/);
 });
 test('hard category in any moderation result wins over a soft rejection',async t=>{
  mockFetch(t,[{results:[{flagged:true,categories:{violence:true}},{flagged:false,categories:{'sexual/minors':true}}]}]);
- await assert.rejects(moderate('synthetic fixture'),{hardBlock:true});
+ await assert.rejects(moderate('order','synthetic fixture'),{hardBlock:true});
 });
