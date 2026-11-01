@@ -49,3 +49,11 @@ Braki blokujące sprzedaż:
 - Model obrazów i tekstu (OpenAI) bez zmian, dopóki pomiar kosztu nie wskaże potrzeby zmiany; wywoływany tylko po płatności.
 - Agenci kodujący pracują wyłącznie w ramach subskrypcji ChatGPT (Codex), bez płatnych API.
 - Darmowy przydział Workers AI (10 000 neuronów/dobę) jest wspólny dla całego konta, także z HireOS. Opcjonalny podgląd z Workers AI wymaga podziału limitu przez właściciela.
+
+## Aktualizacja CZ-19 (2026-11-01)
+
+Domyślnym modelem obrazów jest `gpt-image-2`. Kontrakt, źródła stawek,
+warunkowy szacunek dla 8/15/30 stron i procedura pomiaru właściciela:
+[nota migracyjna](docs/image-model-migration.md). Pomiar rzeczywistych kosztów
+pozostaje niewykonany. W tej gałęzi brakuje implementacji limitu CZ-05;
+wdrożenie wymaga jej dostarczenia i weryfikacji. Ceny sprzedaży bez zmian.

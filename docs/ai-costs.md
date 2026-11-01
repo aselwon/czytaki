@@ -14,7 +14,8 @@ Tokeny wejściowe obrazów mają osobną stawkę; stawki konfiguruje
 `lib/server/ai-pricing.ts`. Nieznany model blokuje HTTP.
 
 Są to konserwatywne koszty według konfiguracji, bez rabatu za cache,
-nie faktura dostawcy. Cennika nie weryfikowano online w sandboxie.
+nie faktura dostawcy. Źródła i ograniczenia weryfikacji stawek GPT Image 2 opisuje
+[nota CZ-19](image-model-migration.md). Pozostałych stawek nie weryfikowano ponownie.
 Przed produkcją właściciel powinien porównać stawki z cennikiem swoich modeli.
 
 Rozliczenie i zwiększenie sumy zamówienia odbywają się w jednym `DB.batch`.

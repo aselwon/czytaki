@@ -105,7 +105,7 @@ export async function planLegacyComic(orderId:string,p:ProductInput,book:Book):P
 
 export async function generateIllustration(orderId:string,p:ProductInput,b:Book,index:number,reference:Uint8Array,mime:string,first?:Uint8Array,referenceKind:"photo"|"illustration"="photo"){
  const body=new FormData();
- const model=runtime().OPENAI_IMAGE_MODEL||"gpt-image-1.5";
+ const model=runtime().OPENAI_IMAGE_MODEL||"gpt-image-2";
  body.set("model",model);
  body.append("image[]",new Blob([reference as BlobPart],{type:mime}),"reference."+(mime==="image/png"?"png":"jpg"));
  if(first){const png=first[0]===137;body.append("image[]",new Blob([first as BlobPart],{type:png?"image/png":"image/jpeg"}),"established-character."+(png?"png":"jpg"));}
@@ -135,7 +135,8 @@ export async function generateIllustration(orderId:string,p:ProductInput,b:Book,
  body.set("quality","medium");
  body.set("output_format","jpeg");
  body.set("output_compression","85");
- if(model==="gpt-image-1.5"||model==="gpt-image-1")body.set("input_fidelity",referenceKind==="illustration"?"low":"high");
+ // GPT Image 2 always uses high fidelity and rejects input_fidelity.
+ if(model==="gpt-image-1")body.set("input_fidelity",referenceKind==="illustration"?"low":"high");
  for(let attempt=0;attempt<2;attempt++){
   const r=await openai(orderId,"images/edits",body);
   const data=r.data?.[0]?.b64_json;
