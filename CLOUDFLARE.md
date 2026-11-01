@@ -26,7 +26,7 @@ Poniższe komendy odpowiadają `wrangler d1 create` i `wrangler r2 bucket create
 
 ```sh
 npm run cf -- d1 create czytaki-production-orders
-npm run cf -- r2 bucket create czytaki-production-private
+npm run cf -- r2 bucket create czytaki-private
 ```
 
 Jeżeli R2 wymaga aktywacji rozliczeń, zatrzymaj procedurę do decyzji właściciela.
