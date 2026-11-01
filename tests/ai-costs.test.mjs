@@ -22,8 +22,8 @@ function setup(t,{paid=true,verified=true}={}){
  env.DB={prepare,async batch(statements){db.exec('BEGIN');try{const results=statements.map(s=>db.prepare(s.sql).run(...s.args));db.exec('COMMIT');return results;}catch(e){db.exec('ROLLBACK');throw e;}}};
  env.BUCKET={};env.OPENAI_API_KEY='offline-fixture';
  const original=globalThis.fetch;
- const state={db,calls:0,response:{results:[{flagged:false}]}};
- globalThis.fetch=async url=>{state.calls++;return Response.json(url.endsWith('/moderations')&&state.moderation?state.moderation:state.response);};
+ const state={db,calls:0,requests:[],response:{results:[{flagged:false}]}};
+ globalThis.fetch=async (url,options)=>{state.calls++;state.requests.push({url,body:options.body});return Response.json(url.endsWith('/moderations')&&state.moderation?state.moderation:state.response);};
  t.after(()=>{globalThis.fetch=original;db.close();});
  state.rows=()=>db.prepare('SELECT * FROM ai_calls ORDER BY rowid').all();
  return state;
@@ -51,7 +51,15 @@ test('image fetch records mixed input usage, output, size and quality',async t=>
  s.moderation={results:[{flagged:false,categories:{violence:false}}]};
  const result=await ai.generateIllustration('order',{format:'story',heroRole:'hero',style:'watercolor',age:'6'}, {character:'synthetic',scenes:[{imagePrompt:'forest'}]},0,new Uint8Array([1]),'image/jpeg');
  assert.deepEqual(result,new Uint8Array([1,2,3]));
- const [row,moderation]=s.rows();assert.equal(moderation.kind,'moderations');assert.equal(moderation.cost_cents,0);assert.equal(row.cost_cents,15);assert.equal(row.images,1);assert.equal(row.size,'1024x1024');assert.equal(row.quality,'medium');
+ const request=s.requests[0];
+ assert.equal(request.url,'https://api.openai.com/v1/images/edits');
+ assert.equal(request.body.get('model'),'gpt-image-2');
+ assert.equal(request.body.has('input_fidelity'),false);
+ assert.equal(request.body.get('size'),'1024x1024');
+ assert.equal(request.body.get('quality'),'medium');
+ assert.equal(request.body.get('output_format'),'jpeg');
+ assert.equal(request.body.get('output_compression'),'85');
+ const [row,moderation]=s.rows();assert.equal(row.model,'gpt-image-2');assert.equal(moderation.kind,'moderations');assert.equal(moderation.cost_cents,0);assert.equal(row.cost_cents,15);assert.equal(row.images,1);assert.equal(row.size,'1024x1024');assert.equal(row.quality,'medium');
  assert.equal(s.db.prepare('SELECT ai_cost_cents FROM orders').get().ai_cost_cents,15);
  await ai.finishAiCall({id:row.id,orderId:'order',model:row.model,kind:row.kind},s.response,'completed');
  assert.equal(s.db.prepare('SELECT ai_cost_cents FROM orders').get().ai_cost_cents,15);
@@ -78,4 +86,32 @@ test('migration preserves legacy orders without granting webhook verification',(
   const {ai_cost_cents,payment_verified_at,...after}=db.prepare('SELECT * FROM orders').get();
   assert.deepEqual(after,{...before});assert.equal(ai_cost_cents,0);assert.equal(payment_verified_at,null);
  }finally{db.close();}
+});
+
+for(const referenceKind of ['photo','illustration'])test('portrait image request preserves references: '+referenceKind,async t=>{
+ const s=setup(t);env.OPENAI_IMAGE_MODEL='gpt-image-2';
+ t.after(()=>delete env.OPENAI_IMAGE_MODEL);
+ s.response={usage:{input_tokens:0,output_tokens:10000,input_tokens_details:{text_tokens:0,image_tokens:0}},data:[{b64_json:'AQID'}]};
+ s.moderation={results:[{flagged:false,categories:{violence:false}}]};
+ await ai.generateIllustration('order',{format:'comic',heroRole:'hero',age:'6'},
+  {character:'synthetic',scenes:[{imagePrompt:'forest',panels:Array.from({length:5},()=>({visual:'forest',speaker:'fox'}))}]},
+  0,new Uint8Array([1]),'image/jpeg',new Uint8Array([137]),referenceKind);
+ const body=s.requests[0].body;
+ assert.equal(body.get('model'),'gpt-image-2');assert.equal(body.has('input_fidelity'),false);
+ assert.equal(body.get('size'),'1024x1536');assert.equal(body.get('quality'),'medium');
+ assert.equal(body.get('output_format'),'jpeg');assert.equal(body.get('output_compression'),'85');
+ assert.deepEqual(body.getAll('image[]').map(file=>file.type),['image/jpeg','image/png']);
+ assert.equal(s.rows()[0].cost_cents,30);
+});
+for(const opts of [{paid:false},{verified:false}])test('image payment gate blocks HTTP '+JSON.stringify(opts),async t=>{
+ const s=setup(t,opts);
+ await assert.rejects(ai.generateIllustration('order',{format:'story',heroRole:'hero'},
+  {character:'synthetic',scenes:[{imagePrompt:'forest'}]},0,new Uint8Array([1]),'image/jpeg'),/płatności/);
+ assert.equal(s.calls,0);assert.equal(s.rows().length,0);
+});
+for(const [text_tokens,image_tokens,cents] of [[10000,0,5],[0,10000,8]])test('image input tariff '+text_tokens+'/'+image_tokens,async t=>{
+ const s=setup(t);
+ const call=await ai.startAiCall('order','images/edits',{model:'gpt-image-2'});
+ await ai.finishAiCall(call,{usage:{input_tokens:10000,output_tokens:0,input_tokens_details:{text_tokens,image_tokens}}},'completed');
+ assert.equal(s.rows()[0].cost_cents,cents);
 });
