@@ -12,7 +12,7 @@ const r2 = cloudflareProduction.r2_buckets[0]?.binding;
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
 const localBindingConfig = {
-  main: "vinext/server/fetch-handler",
+  main: "worker.ts",
   compatibility_flags: ["nodejs_compat"],
   d1_databases: d1
     ? [
