@@ -102,3 +102,29 @@ for(const targeted of [false,true])test(`smallest editable bubble rejects overfl
  book.scenes[0].panels[0].line='To bardzo długa wypowiedź, która nie powinna wyjść poza mały dymek na tej planszy.';
  await assert.rejects(createBookPdf(book,settings,Array(6).fill(image),font),/Comic bubble text exceeds bounds/);
 });
+
+test('five 55-character captions fit outside the illustration and produce a PDF',async()=>{
+ const {comicPageLayout}=await import('../lib/server/pdf.ts');
+ const {planAdaptiveLettering}=await import('../lib/adaptive-lettering.ts');
+ const {default:fontkit}=await import('@pdf-lib/fontkit');
+ const fontBytes=await readFile(new URL('../lib/assets/LiberationSans-Regular.ttf',import.meta.url));
+ const doc=await PDFDocument.create();doc.registerFontkit(fontkit);const font=await doc.embedFont(fontBytes);
+ const raw=JSON.parse(await readFile(new URL('./fixtures/closeup-analysis.json',import.meta.url),'utf8'));
+ raw.protectedAreas=[{x:0,y:0,width:1,height:1}];
+ const panels=Array.from({length:5},()=>({visual:'A synthetic close-up of a shiny star-shaped brooch.',line:'W'.repeat(55),kind:'dialogue'}));
+ const scene={title:'Próba podpisów',text:'Zajawka rozdziału o niezwykłej przygodzie.',imagePrompt:'A synthetic comic illustration with five visual story beats.',panels,lettering:planAdaptiveLettering(raw,panels)};
+ const layout=comicPageLayout(scene,font);
+ assert.equal(layout.captions.length,5);
+ for(const [i,c] of layout.captions.entries()){
+  assert.ok(c.y<=layout.art.y);assert.ok(c.y-c.lines.length*c.lineHeight>=59);
+  assert.ok(c.lines.every(line=>font.widthOfTextAtSize(line,c.size)<=c.width));
+  // Wrapping represents whitespace at a line break rather than in a text run.
+  assert.equal(c.lines.join('').replaceAll(' ',''),`${i+1}.${panels[i].line}`);
+  assert.ok(c.lines.length*c.lineHeight<=c.height);
+ }
+ const book=bookSchema.parse({title:'Próba bezpiecznych podpisów',summary:'Pięć podpisów znajduje się poza ilustracją.',character:'A synthetic character with a star brooch.',comicLayoutVersion:2,scenes:Array.from({length:6},()=>scene)});
+ const settings=productSchema.parse({name:'Maja',format:'comic',world:'forest',style:'comic',age:'6-8',dedication:'',consent:true});
+ const image=new Uint8Array(await readFile(new URL('../public/forest.png',import.meta.url)));
+ const bytes=await createBookPdf(book,settings,Array(6).fill(image),new Uint8Array(fontBytes));
+ assert.equal((await PDFDocument.load(bytes)).getPageCount(),8);
+});

@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `lettering_analysis` text;
