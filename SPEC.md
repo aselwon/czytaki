@@ -18,7 +18,7 @@ Braki blokujące sprzedaż:
 4. Brak retencji i usuwania zdjęć porzuconych zamówień (RODO), brak regulaminu i polityki prywatności.
 5. Moderacja ilustracji wyjściowych i reguły bezpieczeństwa treści dla dzieci niezweryfikowane testami.
 6. Brak testu E2E i CI; 1 test i lint czerwone.
-7. Hosting: `cloudflare.production.json` wskazuje konto Cloudflare `130aa5101f2a9a9e790f166b0f54abae`. **Decyzja: przenosimy na konto właściciela `2791466c5820cfd886aad95e0d3ef948`** (nowe D1 i R2).
+7. Hosting w stanie wyjściowym korzystał z poprzedniego konta Cloudflare. **Decyzja: przenosimy na konto właściciela `2791466c5820cfd886aad95e0d3ef948`** (nowe D1 i R2).
 
 ## Zakres (in scope)
 
