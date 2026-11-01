@@ -5,8 +5,10 @@ import {readFileSync,readdirSync} from 'node:fs';
 import {build} from 'esbuild';
 
 const root=new URL('../',import.meta.url).pathname;
-const compiled=await build({stdin:{contents:'export * from "./lib/server/ai"; export * from "./lib/server/ai-costs"; export * from "./lib/server/ai-budget"; export * from "./lib/server/lettering-diagnostics";',resolveDir:root},bundle:true,write:false,platform:'node',format:'esm',plugins:[{
+const compiled=await build({stdin:{contents:'export * from "./lib/server/ai"; export * from "./lib/server/ai-costs"; export * from "./lib/server/ai-budget"; export * from "./lib/server/lettering-diagnostics"; export {POST as generate} from "./app/api/orders/[id]/generate/route";',resolveDir:root},bundle:true,write:false,platform:'node',format:'esm',plugins:[{
  name:'offline-ai',setup(build){
+  build.onResolve({filter:/\.ttf\?inline$/},()=>({path:'font',namespace:'font'}));
+  build.onLoad({filter:/.*/,namespace:'font'},()=>({contents:'export default "data:font/ttf;base64,AA==";'}));
   build.onResolve({filter:/^cloudflare:workers$/},()=>({path:'env',namespace:'offline'}));
   build.onLoad({filter:/.*/,namespace:'offline'},()=>({contents:'export const env=globalThis.__aiCostEnv;'}));
  }
@@ -18,7 +20,7 @@ function setup(t,{paid=true,verified=true}={}){
  const db=new DatabaseSync(':memory:');
  for(const file of migrations)db.exec(readFileSync(root+'drizzle/'+file,'utf8'));
  db.prepare("INSERT INTO orders (id,owner_hash,settings,amount,created_at,updated_at,payment_status,payment_verified_at) VALUES ('order','owner','{}',2900,1,1,?,?)").run(paid?'paid':'unpaid',verified?1:null);
- function prepare(sql){return {bind(...args){return {async first(){return db.prepare(sql).get(...args)??null;},async run(){return db.prepare(sql).run(...args);},sql,args};}};}
+ function prepare(sql){return {bind(...args){return {async first(){return db.prepare(sql).get(...args)??null;},async run(){const result=db.prepare(sql).run(...args);return {...result,meta:{changes:Number(result.changes)}};},sql,args};}};}
  env.DB={prepare,async batch(statements){db.exec('BEGIN');try{const results=statements.map(s=>db.prepare(s.sql).run(...s.args));db.exec('COMMIT');return results;}catch(e){db.exec('ROLLBACK');throw e;}}};
  env.OPENAI_DAILY_COST_CAP_GROSZE='500';env.OPENAI_USD_PLN_RATE='4.00';
  env.BUCKET={};env.OPENAI_API_KEY='offline-fixture';
@@ -234,4 +236,24 @@ test('close-up layout succeeds with one existing analysis call',async t=>{
  assert.equal((await ai.locateComicSpeech('order',scene,new Uint8Array([1]))).length,5);
  assert.equal(s.calls,1);
  assert.equal(s.db.prepare('SELECT lettering_rejection FROM orders').get().lettering_rejection,null);
+});
+
+test('generate resumes an R2 checkpoint after isolate death with only one responses fetch',async t=>{
+ const s=setup(t),id='12345678-1234-1234-1234-123456789abc';
+ const token=id+'-'+id;
+ const owner=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))).toString('hex');
+ const settings={name:'Test',format:'comic',world:'forest',style:'comic',age:'6-8',dedication:'',consent:true};
+ const scene={title:'Test',text:'Testowa opowieść.',imagePrompt:'A synthetic forest scene.',comicTemplate:0,panels:Array.from({length:5},()=>({visual:'Synthetic explorer',line:'Chodź ze mną!',kind:'dialogue'}))};
+ const book={title:'Test',summary:'Testowa historia.',character:'Synthetic explorer.',comicLayoutVersion:2,scenes:Array.from({length:6},()=>({...scene}))};
+ // No imageReady flag: mirrors pre-CZ-24 R2 saves and death before D1 checkpoint.
+ s.db.prepare("UPDATE orders SET id=?,owner_hash=?,settings=?,book=?,status='generating',lock_token='dead',lock_until=?").run(id,owner,JSON.stringify(settings),JSON.stringify(book),Date.now()-1);
+ env.BUCKET={async get(key){assert.equal(key,`orders/${id}/comic-overlay-v2/scene-0.jpg`);return {arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer};}};
+ const raw=JSON.parse(readFileSync(root+'tests/fixtures/closeup-analysis.json','utf8'));
+ s.response={usage:{input_tokens:1,output_tokens:1},output:[{content:[{type:'output_text',text:JSON.stringify(raw)}]}]};
+ const response=await ai.generate(new Request(`http://localhost/api/orders/${id}/generate`,{method:'POST',headers:{origin:'http://localhost',cookie:'czytaki_session='+token}}),{params:Promise.resolve({id})});
+ assert.equal(response.status,200,await response.clone().text());
+ assert.equal(s.requests.filter(r=>r.url.endsWith('/images/edits')).length,0);
+ assert.equal(s.requests.filter(r=>r.url.endsWith('/responses')).length,1);
+ assert.equal(s.requests.length,1);
+ const order=s.db.prepare('SELECT * FROM orders').get();assert.equal(order.generated,1);assert.equal(order.lock_until,0);
 });

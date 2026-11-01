@@ -40,11 +40,6 @@ export function planAdaptiveLettering(raw:unknown,panels:readonly {kind:string;l
    const region=dialogue?beat.region:{x:0,y:0,width:1,height:.90};
    // The model locates content; deterministic search also explores nearby empty
    // space instead of relying on the model to do precise typesetting arithmetic.
-   const proposals=[...beat.candidates];
-   for(const width of [.12,.14,.16,.20,.24,.28,.32,.38])for(const height of [.065,.08,.10,.12,.14]){
-    for(let y=region.y;y+height<=Math.min(.90,region.y+region.height)+.001;y+=.01)
-     for(let x=region.x;x+width<=region.x+region.width+.001;x+=.01)proposals.push({x,y,width,height});
-   }
    // Copy fitting depends on dimensions, not position; reuse it across the grid.
    const fitCache=new Map<string,boolean>();
    const fits=(box:Rect)=>{
@@ -55,7 +50,7 @@ export function planAdaptiveLettering(raw:unknown,panels:readonly {kind:string;l
     }
     return fitCache.get(key)!;
    };
-   const candidates=proposals.filter(box=>{
+   const safe=(box:Rect)=>{
     if(box.x+box.width>1||box.width<.12||box.width>.46||box.height<.065||box.height>.15||box.y+box.height>.90||!inside(box,region))return false;
     if(protectedAreas.some(area=>intersects(box,area,.02))||result.some(prior=>prior.placement!=='strip'&&intersects(box,prior,.008)))return false;
     if(dialogue&&speaker&&beat.speakerBounds){
@@ -68,8 +63,31 @@ export function planAdaptiveLettering(raw:unknown,panels:readonly {kind:string;l
      if(protectedAreas.some(area=>!intersects(area,body)&&crossesArea(anchor,speaker,area)))return false;
     }
     return fits(box);
-   }).map(box=>({...box,...(dialogue&&speaker?{speaker}: {}),placement:dialogue?'bubble' as const:'caption' as const,reason:`Beat ${i}: ${dialogue?'Visible speaker':certain?'No safe space beside speaker':panels[i].kind==='dialogue'?'Uncertain or missing speaker':'Narration'}`}));
-   return candidates.sort((a,b)=>dialogue&&speaker?Math.hypot(a.x+a.width/2-speaker.x,(a.y+a.height/2-speaker.y)*1.5)-Math.hypot(b.x+b.width/2-speaker.x,(b.y+b.height/2-speaker.y)*1.5):Math.abs(a.y-beat.region.y)-Math.abs(b.y-beat.region.y))[0];
+   };
+   let best:Rect|undefined,bestScore=Infinity;
+   const consider=(box:Rect)=>{
+    const score=dialogue&&speaker?(box.x+box.width/2-speaker.x)**2+((box.y+box.height/2-speaker.y)*1.5)**2:Math.abs(box.y-beat.region.y);
+    if(score>=bestScore||!safe(box))return;
+    best={...box};bestScore=score;
+   };
+   for(const box of beat.candidates)consider(box);
+   // Reuse one scratch rectangle; retain only the best safe candidate.
+   const box={x:0,y:0,width:0,height:0};
+   const search=(step:number)=>{for(const width of [.12,.14,.16,.20,.24,.28,.32,.38])for(const height of [.065,.08,.10,.12,.14]){
+    box.width=width;box.height=height;
+    if(!fits(box))continue;
+    for(box.y=region.y;box.y+height<=Math.min(.90,region.y+region.height)+.001;box.y+=step)
+     for(box.x=region.x;box.x+width<=region.x+region.width+.001;box.x+=dialogue?.01:step)consider(box);
+   }
+   };
+   search(.02);
+   if(dialogue&&!best)search(.01);
+   if(!best)return;
+   // Refine locally at the old resolution without rebuilding a page-wide grid.
+   const coarse=best;
+   for(let y=coarse.y-.01;y<=coarse.y+.011;y+=.01)
+    for(let x=coarse.x-.01;x<=coarse.x+.011;x+=.01)consider({x,y,width:coarse.width,height:coarse.height});
+   return {...best,...(dialogue&&speaker?{speaker}:{}),placement:dialogue?'bubble':'caption',reason:`Beat ${i}: ${dialogue?'Visible speaker':certain?'No safe space beside speaker':panels[i].kind==='dialogue'?'Uncertain or missing speaker':'Narration'}`};
   };
   // Bounded per-beat search: never restart the whole page or spend another API call.
   const chosen=(certain?candidateFor(true):undefined)??candidateFor(false);
