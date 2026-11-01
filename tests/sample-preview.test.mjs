@@ -75,7 +75,7 @@ for(const pages of [8,15,30])test(`photo → sample → checkout uses no OpenAI 
  const preview=await api.preview(request(`/api/orders/${order.id}/preview`,{headers:{cookie}}),{params});
  assert.equal(preview.status,302);assert.equal(preview.headers.get('location'),order.sampleImage);
  assert.match(readFileSync(root+'public'+order.sampleImage,'utf8'),/<svg/);
- const checkout=await api.checkout(request(`/api/orders/${order.id}/checkout`,{method:'POST',headers:{cookie},body:JSON.stringify({email:'buyer@example.invalid'})}),{params});
+ const checkout=await api.checkout(request(`/api/orders/${order.id}/checkout`,{method:'POST',headers:{cookie},body:JSON.stringify({email:'buyer@example.invalid',termsAccepted:true})}),{params});
  assert.equal(checkout.status,200);assert.match((await checkout.json()).url,/^https:\/\/checkout.stripe.com\//);
  assert.equal(s.calls.length,1);assert.equal(s.openai,0);
  assert.equal(s.calls[0].options.body.get('metadata[page_count]'),String(pages));
@@ -108,7 +108,7 @@ test('migration preserves a legacy ready book and its checkout and delivery',asy
  const owner=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))).toString('hex');
  s.db.prepare('UPDATE orders SET owner_hash=?').run(owner);
  const params=Promise.resolve({id:old.id}),cookie='czytaki_session='+token;
- const response=await api.checkout(request('/checkout',{method:'POST',headers:{cookie},body:JSON.stringify({email:'buyer@example.invalid'})}),{params});assert.equal(response.status,200);
+ const response=await api.checkout(request('/checkout',{method:'POST',headers:{cookie},body:JSON.stringify({email:'buyer@example.invalid',termsAccepted:true})}),{params});assert.equal(response.status,200);
  s.session={id:'cs_offline',status:'complete',payment_status:'paid',amount_total:2900,currency:'pln',mode:'payment',metadata:{orderId:old.id},client_reference_id:old.id,customer_details:{email:'buyer@example.invalid'}};
  await api.confirmAndDeliver(s.row(),true);
  assert.equal(s.row().status,'delivered');assert.equal(s.row().book,old.book);assert.equal(s.row().pdf_key,old.pdf_key);
