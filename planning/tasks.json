@@ -227,7 +227,7 @@
       ],
       "dependsOn": ["CZ-06", "CZ-12"],
       "tier": "worker",
-      "status": "review"
+      "status": "done"
     },
     {
       "id": "CZ-19",
