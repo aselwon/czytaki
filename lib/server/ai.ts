@@ -65,7 +65,7 @@ export async function moderate(orderId:string,input:unknown){const r=await opena
 
 export async function generateBook(orderId:string,p:ProductInput,photo:Uint8Array,mime:string):Promise<Book>{
  const image="data:"+mime+";base64,"+Buffer.from(photo).toString("base64");
- await moderate(orderId,[{type:"text",text:p.name+" "+p.heroIdea+" "+p.dedication},{type:"image_url",image_url:{url:image}}]);
+ await moderate(orderId,[{type:"text",text:[p.name,p.title,p.heroIdea,p.dedication].filter(Boolean).join(" ")},{type:"image_url",image_url:{url:image}}]);
  const comic=p.format==="comic",sceneCount=sceneCountForPages(p.pages);
  const instructions=[
   childSafetyPrompt,

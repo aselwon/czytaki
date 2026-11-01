@@ -1,20 +1,34 @@
 {
   "name": "czytaki",
-  "account_id": "130aa5101f2a9a9e790f166b0f54abae",
+  "account_id": "2791466c5820cfd886aad95e0d3ef948",
   "workers_dev": true,
   "preview_urls": false,
-  "d1_databases": [{
-    "binding": "DB",
-    "database_name": "czytaki-orders",
-    "database_id": "481029ba-e1c1-44a2-ad70-55a8cb8b2dcd",
-    "migrations_dir": "drizzle"
-  }],
-  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "czytaki-private" }],
-  "triggers": { "crons": ["17 2 * * *"] },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "czytaki-production-orders",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "czytaki-production-private"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "17 2 * * *"
+    ]
+  },
   "vars": {
     "SALES_ENABLED": "false",
     "DAILY_GENERATION_LIMIT": "3",
     "PRICE_CENTS": "2900"
   },
-  "observability": { "enabled": true, "head_sampling_rate": 0.1 }
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  }
 }

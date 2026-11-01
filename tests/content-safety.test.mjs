@@ -29,7 +29,7 @@ const bundled=await build({stdin:{contents:`export * from './lib/server/ai';expo
 }]});
 const {POST,generateIllustration,generateBook,moderate,validateLocalContent,validatePhoto,ContentSafetyError,hardCategories}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
 const fixtures=JSON.parse(await readFile(new URL('./fixtures/safety/local.json',import.meta.url),'utf8'));
-const settings={name:'Ania',dedication:'Dla Ani',heroIdea:'Przyjazny smok',format:'story',pages:8,heroRole:'original',world:'forest',style:'storybook',age:'3-5',consent:true};
+const settings={name:'Ania',title:'Wyprawa Anny',dedication:'Dla Ani',heroIdea:'Przyjazny smok',format:'story',pages:8,heroRole:'original',world:'forest',style:'storybook',age:'3-5',consent:true};
 const book={character:'Friendly hero',scenes:[{imagePrompt:'Friendly hero in a sunny forest'}]};
 const jpeg=new Uint8Array(100);jpeg.set([255,216,255]);
 const clean={flagged:false,categories:{'sexual/minors':false,violence:false}};
@@ -82,7 +82,7 @@ test('photo and all customer text are moderated before story generation',async t
  const calls=mockFetch(t,[{results:[{flagged:true,categories:{'sexual/minors':true}}]}]);
  await assert.rejects(generateBook('order',settings,jpeg,'image/jpeg'),{status:422});assert.equal(calls.length,1);
  assert.match(calls[0].url,/moderations$/);
- for(const value of [settings.name,settings.heroIdea,settings.dedication])assert.ok(calls[0].body.input[0].text.includes(value));
+ for(const value of [settings.name,settings.title,settings.heroIdea,settings.dedication])assert.ok(calls[0].body.input[0].text.includes(value));
  assert.match(calls[0].body.input[1].image_url.url,/^data:image\/jpeg/);
 });
 test('hard category in any moderation result wins over a soft rejection',async t=>{

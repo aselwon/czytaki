@@ -1,4 +1,5 @@
 import {ContentSafetyError,safetyMessage} from "@/lib/server/content-safety";
+import {hasAssembledBook} from "@/lib/order-state";
 import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
 import {generateBook,generateIllustration,locateComicSpeech} from "@/lib/server/ai";
@@ -13,10 +14,12 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
   sameOrigin(req);
   let r=await ownOrder(req,(await params).id);id=r.id;
   if(r.status==="safety_blocked")throw new HttpError(422,safetyMessage);
-  if(r.status==="ready")return Response.json(view(r));
+  if(hasAssembledBook(r.status))return Response.json(view(r));
+  if(r.payment_status!=="paid"||!r.payment_verified_at)throw new HttpError(403,"Generowanie wymaga płatności potwierdzonej webhookiem.");
+  if(["waiting_capacity","needs_refund"].includes(r.status))throw new HttpError(409,"Zamówienie oczekuje na obsługę.");
   if(!runtime().OPENAI_API_KEY)throw new HttpError(503,"Generator AI nie został podłączony.");
   const {DB,BUCKET}=infrastructure();lock=crypto.randomUUID();const now=Date.now();
-  const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=?,status='generating',updated_at=? WHERE id=? AND lock_until<? AND status NOT IN ('ready','safety_blocked')").bind(lock,now+300000,now,id,now).run();
+  const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=?,status='generating',updated_at=? WHERE id=? AND lock_until<? AND payment_status='paid' AND payment_verified_at IS NOT NULL AND status NOT IN ('safety_blocked','ready','assembled','delivered','waiting_capacity','needs_refund')").bind(lock,now+300000,now,id,now).run();
   if(!claim.meta.changes)throw new HttpError(409,"Ten krok jest już przygotowywany. Spróbuj ponownie za chwilę.");
   r=await findOrder(id);const p=settings(r);const b=story(r);
   if(b?.comicLayoutVersion===1){
@@ -29,6 +32,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
    const photo=await BUCKET.get(r.photo_key!);
    if(!photo)throw new HttpError(410,"Zdjęcie wygasło. Przygotuj nową historię.");
    const result=await generateBook(r.id,p,new Uint8Array(await photo.arrayBuffer()),r.photo_type!);
+   if(p.title)result.title=p.title;
    await DB.prepare("UPDATE orders SET book=? WHERE id=? AND lock_token=?").bind(JSON.stringify(result),id,lock).run();
   }else if(r.generated<b.scenes.length){
    const imageKey=sceneImageKey(id,b,r.generated),cached=await BUCKET.get(imageKey);
@@ -62,7 +66,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
    const key=b.comicLayoutVersion?`${templatePrefix(id,b.comicLayoutVersion)}/book.pdf`:`orders/${id}/book.pdf`;
    await BUCKET.put(key,pdf,{httpMetadata:{contentType:"application/pdf"}});
    if(r.photo_key)await BUCKET.delete(r.photo_key);
-   await DB.prepare("UPDATE orders SET status='ready',pdf_key=?,photo_key=NULL WHERE id=? AND lock_token=?").bind(key,id,lock).run();
+   await DB.prepare("UPDATE orders SET status='assembled',pdf_key=?,photo_key=NULL WHERE id=? AND lock_token=?").bind(key,id,lock).run();
   }
   await DB.prepare("UPDATE orders SET lock_token=NULL,lock_until=0,updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();
   return Response.json(view(await findOrder(id)),{headers:{"Cache-Control":"no-store"}});

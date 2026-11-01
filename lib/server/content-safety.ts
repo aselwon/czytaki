@@ -8,8 +8,8 @@ export class ContentSafetyError extends HttpError {
 // A conservative local screen, not a replacement for post-payment moderation.
 const blockedWords=/\b(porn\w*|seks\w*|sexual\w*|nudes?|nagos\w*|nagie|nagi|eroty\w*|pedofil\w*|gwalt\w*|rape|tortur\w*|torture\w*|gore|samoboj\w*|suicid\w*|nazi\w*|hitler\w*|kurw\w*|fuck\w*)\b/u;
 const blockedPatterns=[/\b(zabij|zamorduj|kill|murder)\b/u,/\b(uciete|odciete)\s+(glowy|konczyny)\b/u];
-export function validateLocalContent(input:{name:string;dedication:string;heroIdea:string}){
- for(const value of [input.name,input.dedication,input.heroIdea]){
+export function validateLocalContent(input:{name:string;title?:string;dedication:string;heroIdea:string}){
+ for(const value of [input.name,input.title??"",input.dedication,input.heroIdea]){
   const normalized=value.normalize("NFKD").replace(/\p{M}|\p{Cf}/gu,"").replace(/ł/gi,"l").toLowerCase();
   if(blockedWords.test(normalized)||blockedPatterns.some(pattern=>pattern.test(normalized)))throw new ContentSafetyError(true);
  }

@@ -77,7 +77,7 @@ test('checkout reuses an open session without creating another payment',async t=
  assert.equal(await checkoutSession(s.order(),s.order().email),s.checkoutUrl);
  assert.equal(s.calls.length,1);assert.equal(s.calls[0].options.method,'GET');
 });
-for(const patch of [{payment_status:'paid'},{status:'generating'},{pdf_key:null},{email:'another@example.invalid'}])test('checkout blocks invalid order state '+JSON.stringify(patch),async t=>{
+for(const patch of [{payment_status:'paid'},{status:'generating'},{status:'needs_refund'},{email:'another@example.invalid'}])test('checkout blocks invalid order state '+JSON.stringify(patch),async t=>{
  const s=setup(t,{payment_status:'unpaid',...patch});
  await assert.rejects(checkoutSession(s.order(),'test@example.invalid'),{status:409});
  assert.equal(s.calls.length,0);

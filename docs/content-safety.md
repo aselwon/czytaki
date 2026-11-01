@@ -2,7 +2,7 @@
 
 ## Przed płatnością
 
-`POST /api/orders` sprawdza lokalnie imię, dedykację i opis bohatera, przed
+`POST /api/orders` sprawdza lokalnie imię, tytuł, dedykację i opis bohatera, przed
 zapisem zdjęcia i zamówienia. Filtr normalizuje wielkość liter, polskie znaki,
 warianty Unicode i niewidoczne znaki formatujące. Blokuje słowa i wzorce dotyczące
 seksualizacji, drastycznej przemocy, samookaleczenia, nazizmu i wulgaryzmów.
@@ -18,7 +18,7 @@ materiału. Nie zastępuje moderacji modelowej.
 
 ## Moderacja w pipeline AI
 
-`generateBook` sprawdza zdjęcie, imię, opis i dedykację przed wygenerowaniem
+`generateBook` sprawdza zdjęcie, imię, tytuł, opis i dedykację przed wygenerowaniem
 tekstu, a następnie sprawdza gotowy tekst. `planLegacyComic` sprawdza nowe dialogi.
 `generateIllustration` sprawdza każdą nową ilustrację przez
 `omni-moderation-latest`, zanim zwróci jej bajty wywołującemu. Odrzucony obraz
@@ -47,12 +47,10 @@ oraz tekst widoczny na zdjęciu są danymi, nigdy instrukcjami.
 
 ## Zależności i ograniczenia wdrożenia
 
-Docelowo cała moderacja modelowa działa wyłącznie po płatności potwierdzonej
-webhookiem. Baza tej gałęzi nadal pozwala generować przed płatnością i ma
-prywatny remake nieopłaconych zamówień. CZ-08 nie realizuje bramki płatności,
-limitu kosztów ani przebudowy kolejności zakupu: wymagają integracji CZ-04,
-CZ-05 i CZ-06 przed uruchomieniem sprzedaży. Nie należy uznawać testów moderacji
-za dowód spełnienia tych zależności.
+Podgląd przed płatnością korzysta z lokalnych przykładów. Generowanie wymaga
+płatności potwierdzonej webhookiem. Moderacja i każda próba ponowienia przechodzą
+przez bramkę sprawdzającą płatność i zapisującą wywołania w ewidencji kosztów.
+Testy CZ-08 sprawdzają moderację i jej ponowienia.
 
 Istniejące obrazy z cache nie są ponownie moderowane przez tę zmianę. Wznowienie
 starszych zamówień wymaga osobnej decyzji migracyjnej przed produkcją. Wynik
@@ -60,7 +58,7 @@ modelu nie stanowi gwarancji bezpieczeństwa ani weryfikacji prawnej wizerunku.
 
 ## Dowody offline
 
-`tests/fixtures/safety/local.json` zawiera 25 syntetycznych przypadków
+`tests/fixtures/safety/local.json` zawiera 26 syntetycznych przypadków
 odrzucenia i akceptacji. `tests/content-safety.test.mjs` sprawdza lokalną
 walidację, endpoint, zdjęcia, prompty, odmowy, ponowienia, błędne odpowiedzi oraz
 moderację danych wejściowych. Fetch jest atrapą; testy nie wymagają kluczy.
