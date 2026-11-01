@@ -200,3 +200,28 @@ test('rejected reservation sends only capacity alert below 80 percent',async t=>
  await ai.budgetAlerts(ai.budgetDay(),500,true);
  assert.equal(s.calls,1);assert.match(s.requests[0].body,/100%/);
 });
+
+test('layout rejection persists a safe reason in D1 without extra AI calls',async t=>{
+ const s=setup(t);
+ const raw=JSON.parse(readFileSync(root+'tests/fixtures/closeup-analysis.json','utf8'));
+ raw.beats[1].confidence=.2;
+ s.response={usage:{input_tokens:1,output_tokens:1},output:[{content:[{type:'output_text',text:JSON.stringify(raw)}]}]};
+ const scene={title:'Synthetic private title',panels:Array.from({length:5},()=>({kind:'dialogue',line:'Synthetic private copy'}))};
+ await assert.rejects(ai.locateComicSpeech('order',scene,new Uint8Array([1])),e=>e.status===422);
+ assert.equal(s.calls,2);
+ assert.equal(s.db.prepare('SELECT lettering_rejection FROM orders').get().lettering_rejection,'Uncertain speaker');
+ assert.ok(s.requests.every(r=>r.url.endsWith('/responses')));
+ // Malformed responses must not persist snippets of customer/model content.
+ s.response.output[0].content[0].text='private content, invalid JSON';
+ await assert.rejects(ai.locateComicSpeech('order',scene,new Uint8Array([1])),e=>e.status===422);
+ assert.equal(s.db.prepare('SELECT lettering_rejection FROM orders').get().lettering_rejection,'Invalid placement analysis');
+});
+test('close-up layout succeeds with one existing analysis call',async t=>{
+ const s=setup(t);
+ const raw=JSON.parse(readFileSync(root+'tests/fixtures/closeup-analysis.json','utf8'));
+ s.response={usage:{input_tokens:1,output_tokens:1},output:[{content:[{type:'output_text',text:JSON.stringify(raw)}]}]};
+ const scene={title:'Synthetic',panels:raw.beats.map(b=>({kind:b.speaker?'dialogue':'narration',line:'Krótka opowieść.'}))};
+ assert.equal((await ai.locateComicSpeech('order',scene,new Uint8Array([1]))).length,5);
+ assert.equal(s.calls,1);
+ assert.equal(s.db.prepare('SELECT lettering_rejection FROM orders').get().lettering_rejection,null);
+});
