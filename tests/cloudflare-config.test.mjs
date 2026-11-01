@@ -10,7 +10,7 @@ const config = JSON.parse(readFileSync(new URL('../cloudflare.production.json', 
 
 test('production configuration targets the owner with private storage and sales disabled', () => {
  assert.equal(config.account_id, '2791466c5820cfd886aad95e0d3ef948');
- assert.equal(config.workers_dev, true);
+ assert.equal(config.workers_dev, false);
  assert.equal(config.preview_urls, false);
  assert.equal(config.vars.SALES_ENABLED, 'false');
  assert.equal(config.vars.OPENAI_DAILY_COST_CAP_GROSZE, '500');

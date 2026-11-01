@@ -1,7 +1,7 @@
 {
   "name": "czytaki",
   "account_id": "2791466c5820cfd886aad95e0d3ef948",
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": false,
   "routes": [
     {
