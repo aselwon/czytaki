@@ -55,11 +55,10 @@ wymaga osobnego planu właściciela.
 
 ## 4. Ustal publiczny host i ochronę administratora
 
-Konfiguracja włącza publiczny host `czytaki.<subdomena-konta>.workers.dev`
-(`workers_dev=true`), wyłącza adresy podglądów (`preview_urls=false`).
-Dokładny host ustal w panelu konta. Jeżeli właściciel wybierze własną domenę,
-musi skonfigurować jej trasę i ochronę przed włączeniem sprzedaży; wyłącz wtedy
-`workers_dev`, by nie pozostawić alternatywnej drogi do panelu.
+Jedynym publicznym hostem jest własna domena `czytaki.kredkuj.pl` (`routes`,
+`custom_domain=true`). Host `workers.dev` jest wyłączony (`workers_dev=false`),
+by nie pozostawić alternatywnej drogi do panelu z pominięciem Access; adresy
+podglądów również (`preview_urls=false`).
 
 W Cloudflare Zero Trust → Access → Applications właściciel konfiguruje aplikacje
 Self-hosted dla **każdego dostępnego hosta**, obejmujące `/admin*` i
