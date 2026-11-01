@@ -70,10 +70,11 @@ test('unknown model fails before fetch',async t=>{
 test('migration preserves legacy orders without granting webhook verification',()=>{
  const db=new DatabaseSync(':memory:');
  try{
-  for(const file of migrations.slice(0,-1))db.exec(readFileSync(root+'drizzle/'+file,'utf8'));
+  const aiMigration=migrations.findIndex(file=>file.startsWith('0002_'));
+  for(const file of migrations.slice(0,aiMigration))db.exec(readFileSync(root+'drizzle/'+file,'utf8'));
   db.exec("INSERT INTO orders (id,owner_hash,settings,amount,created_at,updated_at,payment_status,book,pdf_key) VALUES ('legacy','owner','{}',3900,1,2,'paid','old-book','old.pdf')");
   const before=db.prepare('SELECT * FROM orders').get();
-  db.exec(readFileSync(root+'drizzle/'+migrations.at(-1),'utf8'));
+  db.exec(readFileSync(root+'drizzle/'+migrations[aiMigration],'utf8'));
   const {ai_cost_cents,payment_verified_at,...after}=db.prepare('SELECT * FROM orders').get();
   assert.deepEqual(after,{...before});assert.equal(ai_cost_cents,0);assert.equal(payment_verified_at,null);
  }finally{db.close();}

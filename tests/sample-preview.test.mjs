@@ -54,7 +54,7 @@ function setup(t,{legacy=false}={}){
   if(url==='https://api.resend.com/emails')return Response.json({id:'offline-email'});
   throw new Error('Network blocked: '+url);
  };
- t.after(()=>{globalThis.fetch=original;db.close();});
+ t.after(()=>{globalThis.fetch=original;delete env.AI;delete env.PREVIEW_WORKERS_AI;delete env.PREVIEW_DAILY_NEURON_CAP;db.close();});
  state.row=()=>({...db.prepare('SELECT * FROM orders').get()});
  return state;
 }
@@ -68,6 +68,7 @@ for(const pages of [8,15,30])test(`photo → sample → checkout uses no OpenAI 
  assert.equal(uploaded.status,201);const order=await uploaded.json();
  assert.equal(order.status,'awaiting_payment');assert.equal(order.samplePreview,true);
  assert.equal(order.title,product.title);assert.equal(order.dedication,product.dedication);
+ assert.equal(api.view(s.row()).previewWorkersAi,false);
  assert.match(order.previewText,/Iskra/);assert.equal(order.generated,0);
  assert.equal(s.row().book,null);assert.equal(s.row().pdf_key,null);
  assert.equal(s.objects.size,1);assert.deepEqual(s.objects.get(s.row().photo_key),bytes);
@@ -95,6 +96,27 @@ test('sample label, customer text and illustration render for every format/world
   assert.ok(html.includes(api.SAMPLE_PREVIEW_LABEL));assert.ok(html.includes(product.title));assert.ok(html.includes(product.dedication));assert.ok(html.includes('Iskra'));
   assert.ok(html.includes(sample.sampleImage));assert.match(readFileSync(root+'public'+sample.sampleImage,'utf8'),/<svg/);
  }
+});
+test('Workers AI preview falls back after quota exhaustion or inference failure without OpenAI',async t=>{
+ for(const failure of ['limit','quota-error','inference']){
+  const s=setup(t);env.PREVIEW_WORKERS_AI='true';env.PREVIEW_DAILY_NEURON_CAP=failure==='limit'?'0':'40';
+  env.AI={async run(){if(failure==='inference')throw new Error('offline');return {image:new Uint8Array([1,2,3]).buffer};}};
+  if(failure==='quota-error'){const prepare=env.DB.prepare;env.DB.prepare=sql=>sql.includes('preview_neuron_quotas')?{bind(){return{async first(){throw new Error('db offline');}};}}:prepare(sql);}
+  const body=new FormData();body.set('settings',JSON.stringify(product));const bytes=new Uint8Array(128);bytes.set([137,80,78,71,13,10,26,10]);body.set('photo',new File([bytes],'synthetic.png',{type:'image/png'}));
+  const upload=await api.upload(request('/api/orders',{method:'POST',body}));const order=await upload.json();const cookie=upload.headers.get('set-cookie').split(';')[0];
+  const response=await api.preview(request(`/api/orders/${order.id}/preview`,{headers:{cookie}}),{params:Promise.resolve({id:order.id})});
+  assert.equal(response.status,302);assert.equal(response.headers.get('location'),order.sampleImage);assert.equal(s.openai,0);
+  delete env.AI;delete env.PREVIEW_WORKERS_AI;delete env.PREVIEW_DAILY_NEURON_CAP;
+ }
+});
+test('Workers AI preview is opt-in and returns a low-quality sketch without OpenAI',async t=>{
+ const s=setup(t);env.PREVIEW_WORKERS_AI='true';env.PREVIEW_DAILY_NEURON_CAP='40';env.AI={async run(model,input){s.aiArgs={model,input};return {image:'AQID'};}};
+ const body=new FormData();body.set('settings',JSON.stringify(product));const bytes=new Uint8Array(128);bytes.set([137,80,78,71,13,10,26,10]);body.set('photo',new File([bytes],'synthetic.png',{type:'image/png'}));
+ const upload=await api.upload(request('/api/orders',{method:'POST',body}));const order=await upload.json();const cookie=upload.headers.get('set-cookie').split(';')[0];
+ const response=await api.preview(request(`/api/orders/${order.id}/preview`,{headers:{cookie}}),{params:Promise.resolve({id:order.id})});
+ assert.equal(response.status,200);assert.equal(response.headers.get('X-Czytaki-Preview'),'low-quality-sketch');assert.equal(s.aiArgs.model,'@cf/black-forest-labs/flux-1-schnell');assert.equal(s.aiArgs.input.steps,4);assert.equal(s.openai,0);
+ assert.equal(api.view(s.row()).previewWorkersAi,true);
+ delete env.AI;delete env.PREVIEW_WORKERS_AI;delete env.PREVIEW_DAILY_NEURON_CAP;
 });
 test('prepayment import graph contains no AI client',()=>{
  assert.equal(Object.keys(compiled.metafile.inputs).some(p=>/lib\/server\/ai(?:-costs)?\.ts$/.test(p)),false);

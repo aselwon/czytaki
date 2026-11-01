@@ -13,6 +13,9 @@ test('production configuration targets the owner with private storage and sales 
  assert.equal(config.workers_dev, true);
  assert.equal(config.preview_urls, false);
  assert.equal(config.vars.SALES_ENABLED, 'false');
+ assert.equal(config.vars.PREVIEW_WORKERS_AI, 'false');
+ assert.equal(config.vars.PREVIEW_DAILY_NEURON_CAP, '5000');
+ assert.deepEqual(config.ai, {binding: 'AI'});
  assert.deepEqual(config.d1_databases, [{binding: 'DB', database_name: 'czytaki-production-orders', database_id: '00000000-0000-4000-8000-000000000000', migrations_dir: 'drizzle'}]);
  assert.deepEqual(config.r2_buckets, [{binding: 'BUCKET', bucket_name: 'czytaki-production-private'}]);
  assert.deepEqual(config.triggers.crons, ['17 2 * * *']);
@@ -26,7 +29,7 @@ test('all production migrations initialize an empty database', t => {
   db.exec(readFileSync(new URL(file, directory), 'utf8'));
  }
  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
- for (const table of ['orders', 'generation_quotas', 'admin_login_attempts', 'ai_calls']) assert.ok(tables.includes(table));
+ for (const table of ['orders', 'generation_quotas', 'preview_neuron_quotas', 'admin_login_attempts', 'ai_calls']) assert.ok(tables.includes(table));
  const columns = db.prepare('PRAGMA table_info(orders)').all().map(row => row.name);
  assert.ok(columns.includes('payment_verified_at'));
  assert.ok(columns.includes('ai_cost_cents'));

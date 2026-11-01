@@ -1,6 +1,7 @@
 import {worlds,type ProductInput} from "./product";
 
 export const SAMPLE_PREVIEW_LABEL="Przykładowy podgląd — ilustracje z Twoim zdjęciem powstaną po płatności";
+export const WORKERS_AI_PREVIEW_LABEL="Szkic poglądowy niskiej jakości — jeśli usługa jest niedostępna, pokazujemy przykład statyczny";
 
 // Local, authored vector illustrations contain no photographs or likenesses.
 // Sample content is never saved as the generated book or counted as AI output.

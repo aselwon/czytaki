@@ -17,6 +17,7 @@
       "bucket_name": "czytaki-production-private"
     }
   ],
+  "ai": { "binding": "AI" },
   "triggers": {
     "crons": [
       "17 2 * * *"
@@ -24,6 +25,8 @@
   },
   "vars": {
     "SALES_ENABLED": "false",
+    "PREVIEW_WORKERS_AI": "false",
+    "PREVIEW_DAILY_NEURON_CAP": "5000",
     "DAILY_GENERATION_LIMIT": "3",
     "PRICE_CENTS": "2900"
   },
