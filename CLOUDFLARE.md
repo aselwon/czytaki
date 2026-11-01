@@ -157,3 +157,54 @@ Agent nie wykonuje żadnego zdalnego kroku tej instrukcji.
 - Potwierdź wykonanie crona w logach i retencję na syntetycznych danych.
 - Zakończ pozostałe kryteria MVP (pipeline po płatności, limit AI i wznawianie)
   przed zmianą `SALES_ENABLED`. Agent nie wykonuje płatnych testów ani wysyłek.
+
+## 9. Backup D1 i R2 oraz odtworzenie staging
+
+Backup nie jest automatycznie szyfrowany ani wysyłany poza komputer. Katalog
+kopia zawiera dane zamówień i pliki klientów: przechowuj go w szyfrowanym,
+ograniczonym dostępie miejscu i stosuj retencję zgodną z polityką prywatności.
+Nie commituj kopii do repozytorium. Dla D1 wykonaj eksport przez Wrangler.
+Wrangler nie oferuje polecenia listowania kluczy obiektów R2; przekazuj komplet
+kluczy z inwentarza źródłowego jako argumenty skryptu (np. z eksportu
+administracyjnego lub narzędzia S3 właściciela). Skrypt zapisuje tę listę jako
+`r2-manifest.json` i pobiera każdy obiekt. Sam eksport D1 nie zastępuje kopii
+obiektów R2.
+
+Najpierw przygotuj lokalny build i stan, który ma zostać skopiowany:
+
+```sh
+npm run build
+npm run local:setup
+```
+
+Zrób lokalną kopię D1 i obiektów wskazanych przez inwentarz kluczy:
+
+```sh
+npm run backup -- backup /bezpieczna/sciezka/czytaki-2026-11-01 orders/ID/source orders/ID/page-0.pdf
+```
+
+Weryfikuj `d1.sql` oraz `r2-manifest.json`; nie umieszczaj w nich sekretów.
+Odtworzenie zawsze kieruj do **oddzielnego lokalnego** katalogu
+`.wrangler/state-staging`
+(albo innego stanu staging), nigdy do produkcyjnej konfiguracji:
+
+```sh
+npm run backup -- restore /bezpieczna/sciezka/czytaki-2026-11-01
+```
+
+Domyślna konfiguracja skryptu to `dist/server/wrangler.json`; D1 eksportuje
+lokalny stan Wranglera `.wrangler/state`, R2 odczytuje go z tego samego katalogu,
+a odtworzenie zapisuje do `.wrangler/state-staging`. Konfigurację można wskazać
+przez `CZYTAKI_CONFIG`, a katalog stanu R2 źródłowego/docelowego przez
+`CZYTAKI_STATE` (eksport D1 Wranglera używa domyślnego `.wrangler/state`).
+Odtworzenie nadpisuje rekordy/obiekty o tych samych kluczach w wybranym stanie
+lokalnym; przed odtworzeniem na istniejącym stagingu zachowaj jego dotychczasową
+kopię. Skrypt wymaga bindingów `DB` i `BUCKET` oraz jawnie wywołuje Wranglera
+z `--local`; nie używa konta ani poświadczeń zdalnych.
+
+Przed incydentem właściciel powinien zweryfikować okresowo spójność snapshotu:
+przywrócić kopię do pustego staging `.wrangler/state-staging`, uruchomić aplikację na
+tym stanie i sprawdzić przykładowe zamówienie, PDF oraz obrazy. Dla kopii z
+produkcyjnego konta potrzebny jest osobny, zatwierdzony przez właściciela eksport
+D1 i inwentarz/odczyt R2 zdalnymi narzędziami posiadającymi uprawnienia tylko do
+odczytu; nie kieruj zdalnego eksportu na lokalny skrypt przez `--remote`.
