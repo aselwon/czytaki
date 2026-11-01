@@ -320,6 +320,26 @@
       ],
       "tier": "planner",
       "status": "done"
+    },
+    {
+      "id": "CZ-24",
+      "title": "Generowanie w limitach Workers: zawsze JSON, krótsze kroki, odzyskiwanie blokady i zamówienia po odświeżeniu",
+      "priority": "high",
+      "description": "Po wdrożeniu CZ-23 (wersja 2e07272b) wznowienie zamówienia CZ-14 06804778… przeszło ilustracje 1–3, a na 'Ilustracja 4 z 6' przeglądarka dostała HTML zamiast JSON-u (`Unexpected token '<', \"<!DOCTYPE \"...`). Analityka Workers (GraphQL workersInvocationsAdaptive) pokazuje dla tego żądania 2026-11-01T23:10Z status=exceededResources, CPU 451 ms (sukcesy obok: 445–570 ms, więc to nie limit CPU), wall 74,6 s, 3 subrequesty: images/edits (gpt-image-2) + moderacja + gpt-5.4 zakończyły się (ai_calls completed, zapłacone), a izolat padł po nich, więc to najpewniej przekroczony limit pamięci izolatu (128 MB). Pomiar lokalny (node, fikstura closeup-analysis.json): planAdaptiveLettering po CZ-23 alokuje chwilowo 58–72 MB sterty i trwa 200–240 ms, bo buduje dla każdego beatu pełną siatkę ~240 tys. obiektów-propozycji (8 szerokości × 5 wysokości × krok 0,01 po x i y, a podpisy/narracja przeszukują całą stronę) i kopiuje je przez filter/map/spread. W tym samym żądaniu w pamięci są: odpowiedź obrazu b64 (~2 MB jako string + Buffer), data URL do moderacji, JSON body do gpt-5.4 z obrazem base64 oraz zdjęcie i ilustracja referencyjna. Zabicia izolatu nie łapie try/catch trasy, więc catch nie zwolnił blokady (lock_until = start + 300 s, wygasło samo o 00:15:16 Warsaw), a dwa kliknięcia 'Kontynuuj' w tym oknie dostały 409 'Ten krok jest już przygotowywany'. Front (app/studio.tsx request(), app/comic-editor.tsx) robi r.json() bez sprawdzenia content-type, a po odświeżeniu bez ?order= strona pokazuje pusty formularz zamiast zamówienia. Napraw (najmniejsza spójna zmiana w obecnej architekturze Next-on-Workers + D1 + R2, bez nowych płatnych usług Cloudflare i bez zmiany modeli): (1) Pamięć/CPU planera: bez materializacji pełnej siatki — generuj propozycje leniwie (generator/pętla z wczesnym odrzuceniem i limitem np. top-N najlepszych na beat), grubszy krok (np. 0,02) z lokalnym doszlifowaniem, bez kopiowania obiektów; budżet: <8 MB dodatkowej sterty i <50 ms na fiksturach (test mierzy heapUsed/czas z zapasem). (2) Jeden płatny krok na żądanie: generate dzieli ilustrację na dwa kroki z trwałym stanem w D1 — (a) obraz + moderacja + zapis R2 (zatwierdzony stan 'obraz gotowy', np. kolumna/flaga per scena), (b) analiza układu gpt-5.4 + planowanie w osobnym żądaniu; zwalniaj referencje do base64/Bufferów przed kolejnym krokiem, nie trzymaj kilku kopii base64 naraz. Wznowienie po awarii w (b) nigdy nie generuje obrazu ponownie (używa R2) — zachowane jak dziś. (3) API zawsze zwraca JSON: wspólny wrapper tras /api/* (top-level try/catch → {error} + status), a w worker.ts fallback zamieniający nie-JSON 5xx z warstwy Next na JSON dla /api/*. (4) Blokada jako lease z TTL dobranym do jednego kroku (np. 120–180 s) z heartbeat/odnowieniem lub odczytem 'stale' — po padnięciu izolatu kolejne kliknięcie po upływie TTL przejmuje krok automatycznie; komunikat 409 zawiera, za ile sekund ponowić; front sam ponawia po TTL. (5) Front: request() sprawdza content-type, przy nie-JSON pokazuje polski komunikat 'Serwer chwilowo nie odpowiedział. Kliknij „Kontynuuj generowanie”.' i nie rzuca SyntaxError; zapamiętuje id aktywnego/opłaconego zamówienia w localStorage (bez danych osobowych) i po odświeżeniu bez ?order= przywraca zamówienie (dopisuje ?order= przez history.replaceState) zamiast pustego formularza. Zachowaj: limit 5 zł/dobę (CZ-20), CZ-23 fallback dymków, brak płacenia drugi raz, bramka testowa CZ-21.",
+      "acceptance": [
+        "Test regresji planera: tests/fixtures/closeup-analysis.json (oraz wariant all-uncertain i lustrzany) — wynik identyczny co do bezpieczeństwa (brak nakładania na protectedAreas/speakerBounds), dodatkowa sterta < 8 MB i czas < 50 ms (pomiar w teście z zapasem, global.gc gdy dostępne).",
+        "Test generation-resume: krok obrazu i krok układu to osobne żądania; awaria (wyjątek/zabicie) po zapisie obrazu do R2 → następne żądanie robi tylko analizę układu (mock fetch: 0 wywołań images/edits, 1 wywołanie responses).",
+        "Test: każda trasa /api/orders/* przy wyjątku zwraca JSON {error} z content-type application/json; worker.ts zamienia nie-JSON 5xx dla /api/* na JSON.",
+        "Test: blokada starsza niż TTL jest przejmowana przez kolejne żądanie; świeża daje 409 z retryAfter; ścieżka sukcesu i błędu zwalnia blokadę.",
+        "Test frontu (logika request()): odpowiedź HTML 502 → polski komunikat bez SyntaxError; po odświeżeniu bez ?order= zamówienie z localStorage jest przywracane i URL dostaje ?order=.",
+        "npm test && npm run lint zielone; brak nowych płatnych usług, modele bez zmian, limit 500 gr/dobę bez zmian.",
+        "Po wdrożeniu właściciel wznawia zamówienie 06804778… (obraz 4 jest już w R2 i zapłacony) — ilustracje 4–6 i PDF powstają bez exceededResources (sprawdzone w analityce Workers)."
+      ],
+      "dependsOn": [
+        "CZ-23"
+      ],
+      "tier": "planner",
+      "status": "todo"
     }
   ]
 }
