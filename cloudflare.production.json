@@ -7,14 +7,14 @@
     {
       "binding": "DB",
       "database_name": "czytaki-production-orders",
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "6b7b4278-352d-4c93-9bdc-b13d14693572",
       "migrations_dir": "drizzle"
     }
   ],
   "r2_buckets": [
     {
       "binding": "BUCKET",
-      "bucket_name": "czytaki-production-private"
+      "bucket_name": "czytaki-private"
     }
   ],
   "ai": { "binding": "AI" },

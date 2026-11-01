@@ -16,8 +16,8 @@ test('production configuration targets the owner with private storage and sales 
  assert.equal(config.vars.PREVIEW_WORKERS_AI, 'false');
  assert.equal(config.vars.PREVIEW_DAILY_NEURON_CAP, '5000');
  assert.deepEqual(config.ai, {binding: 'AI'});
- assert.deepEqual(config.d1_databases, [{binding: 'DB', database_name: 'czytaki-production-orders', database_id: '00000000-0000-4000-8000-000000000000', migrations_dir: 'drizzle'}]);
- assert.deepEqual(config.r2_buckets, [{binding: 'BUCKET', bucket_name: 'czytaki-production-private'}]);
+ assert.deepEqual(config.d1_databases, [{binding: 'DB', database_name: 'czytaki-production-orders', database_id: '6b7b4278-352d-4c93-9bdc-b13d14693572', migrations_dir: 'drizzle'}]);
+ assert.deepEqual(config.r2_buckets, [{binding: 'BUCKET', bucket_name: 'czytaki-private'}]);
  assert.deepEqual(config.triggers.crons, ['17 2 * * *']);
 });
 
