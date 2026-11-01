@@ -22,14 +22,18 @@ test('same scene mirrored: bubble follows the speaker instead of a fixed templat
 test('placement does not depend on a species or person category',()=>{
  for(const name of ['pies','jeleń','dziecko','zabawka'])assert.equal(planAdaptiveLettering(analysis(true),panels.map(p=>({...p,line:`Hej, ${name}!`}))).length,5);
 });
-test('unsafe, uncertain and duplicate speaker maps fail closed',()=>{
+test('unsafe, uncertain and duplicate speaker maps fall back without covering characters',()=>{
  for(const mutate of [
   a=>{a.beats[0].confidence=.4;},
   a=>{a.protectedAreas=[{...a.beats[0].region}];},
   a=>{a.beats[0].speaker=null;},
   a=>{a.beats[1].index=0;},
   a=>{a.beats[0].region.height=.02;},
- ]){const a=analysis();mutate(a);assert.throws(()=>planAdaptiveLettering(a,panels));}
+ ]){const a=analysis();mutate(a);const boxes=planAdaptiveLettering(a,panels);
+ assert.equal(boxes.length,5);assert.equal(boxes[0].speaker,undefined);
+ for(const box of boxes.filter(b=>b.placement!=='strip'))assert.ok([...a.protectedAreas,...a.beats.flatMap(b=>b.speakerBounds?[b.speakerBounds]:[])].every(area=>!overlaps(box,area)));
+ if(a.beats[1].index===0)assert.ok(boxes.every(b=>b.placement==='strip'));
+ }
 });
 test('bad model candidates are replaced by safe local search, never by a fixed template',()=>{
  const a=analysis(true);a.beats.forEach(beat=>{beat.candidates[0].x=.02;});
@@ -84,5 +88,35 @@ test('another body between candidate and speaker prevents cross-character attrib
  a.beats[0].speakerBounds={x:.1,y:0,width:.1,height:.16};
  a.beats[0].speaker={x:.15,y:.07};
  a.protectedAreas=[{x:.21,y:0,width:.02,height:.17},{x:0,y:0,width:.08,height:.17}];
- assert.throws(()=>planAdaptiveLettering(a,panels),/No safe space/);
+ const box=planAdaptiveLettering(a,panels)[0];assert.equal(box.speaker,undefined);assert.equal(box.placement,'caption');
+ assert.ok(a.protectedAreas.every(area=>!overlaps(box,area)));
+});
+
+for(const variant of ['uncertain','missing','outside'])for(const mirrored of [false,true])test(`closeup beat 1 fallback: ${variant}, mirrored=${mirrored}`,async()=>{
+ const a=JSON.parse(await readFile(new URL('./fixtures/closeup-analysis.json',import.meta.url),'utf8'));
+ if(variant==='uncertain')a.beats[1].confidence=.6;
+ if(variant==='missing'){a.beats[1].speaker=null;a.beats[1].speakerBounds=null;}
+ if(variant==='outside')a.beats[1].speaker={x:0,y:0};
+ if(mirrored){
+  const mirror=r=>({...r,x:1-r.x-r.width});
+  a.protectedAreas=a.protectedAreas.map(mirror);
+  a.beats=a.beats.map(b=>({...b,speaker:b.speaker?{...b.speaker,x:1-b.speaker.x}:null,speakerBounds:b.speakerBounds?mirror(b.speakerBounds):null,region:mirror(b.region),candidates:b.candidates.map(mirror)}));
+ }
+ const copy=panels.map((p,i)=>({...p,kind:i===1?'dialogue':a.beats[i].speaker?'dialogue':'narration',line:i===1?'Czas odkryć tajemnicę!':p.line}));
+ const boxes=planAdaptiveLettering(a,copy);
+ assert.equal(boxes.length,5);assert.equal(boxes[1].placement,'caption');assert.equal(boxes[1].speaker,undefined);
+ boxes.forEach((box,i)=>{
+  assert.notEqual(box.placement,'strip');
+  assert.ok(box.y+box.height<=.90);
+  assert.ok([...a.protectedAreas,...a.beats.flatMap(b=>b.speakerBounds?[b.speakerBounds]:[])].every(area=>!overlaps(box,area)));
+  assert.ok(boxes.slice(0,i).every(prior=>!overlaps(box,prior)));
+ });
+});
+test('fully protected illustration uses five strip entries; a covered region can relocate',()=>{
+ const a=analysis();a.protectedAreas=[{x:0,y:0,width:1,height:1}];
+ const boxes=planAdaptiveLettering(a,panels);
+ assert.equal(boxes.length,5);assert.ok(boxes.every(b=>b.placement==='strip'&&!b.speaker));
+ a.protectedAreas=[a.beats[0].region];
+ const relocated=planAdaptiveLettering(a,panels)[0];
+ assert.equal(relocated.placement,'caption');assert.ok(!overlaps(relocated,a.protectedAreas[0]));
 });

@@ -1,3 +1,4 @@
+import {saveLetteringAnalysis} from "@/lib/server/lettering-diagnostics";
 import {ContentSafetyError,safetyMessage} from "@/lib/server/content-safety";
 import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
@@ -42,7 +43,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
     const cached=await BUCKET.get(sceneImageKey(id,b,next));
     const result=cached?new Uint8Array(await cached.arrayBuffer()):await generateIllustration(r.id,p,b,next,new Uint8Array(await source.arrayBuffer()),next?"image/jpeg":sceneImageType(originalBook),undefined,"illustration");
     if(!cached)await BUCKET.put(sceneImageKey(id,b,next),result,{httpMetadata:{contentType:"image/jpeg"}});
-    b.scenes[next].lettering=await locateComicSpeech(r.id,b.scenes[next],result);b.scenes[next].placementVersion=1;
+    b.scenes[next].lettering=await locateComicSpeech(r.id,b.scenes[next],result,saveLetteringAnalysis(DB,r.id,next));b.scenes[next].placementVersion=1;
     await BUCKET.put(sceneImageKey(id,b,next),result,{httpMetadata:{contentType:"image/jpeg"}});
     await BUCKET.put(`${prefix}/book.json`,JSON.stringify(b),{httpMetadata:{contentType:"application/json"}});
     progress=next+1;

@@ -43,6 +43,13 @@
       "when": 1793571421094,
       "tag": "0005_nebulous_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793573001956,
+      "tag": "0006_bent_marvel_apes",
+      "breakpoints": true
     }
   ]
 }

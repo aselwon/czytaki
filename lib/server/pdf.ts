@@ -32,25 +32,52 @@ export function fitComicLettering(text:string,font:PDFFont,width:number,height:n
  if(lines.length*size*1.2>height)throw new Error("Comic lettering does not fit safely inside its empty bubble");
  return {size,lines,lineHeight:size*1.2};
 }
+// Strip coordinates are PDF points, outside the illustration, never image overlays.
+export function comicPageLayout(scene:Book["scenes"][number],font:PDFFont){
+ const rowHeight=48,stripWidth=465;
+ const strip=new Set(scene.lettering?.flatMap((box,i)=>box.placement==='strip'?[i]:[])??[]);
+ for(;;){
+  const stripHeight=strip.size?strip.size*rowHeight+12:0;
+  const height=735-stripHeight,width=height*2/3;
+  const art={x:(pageWidth-width)/2,y:59+stripHeight,width,height};
+  let added=false;
+  scene.lettering?.forEach((box,i)=>{
+   if(strip.has(i)||!box.placement)return;
+   try{fitBubbleCopy(scene.panels![i].line,box.width*width,box.height*height,scene.panels![i].kind,!!box.speaker,(text:string,size:number)=>font.widthOfTextAtSize(text,size));}
+   catch{strip.add(i);added=true;}
+  });
+  if(added)continue;
+  const captions=[...strip].sort((a,b)=>a-b).map((index,row)=>({
+   index,x:65,y:59+stripHeight-10-row*rowHeight,width:stripWidth,height:rowHeight,
+   ...fitComicLettering(`${index+1}. ${scene.panels![index].line}`,font,stripWidth,rowHeight)
+  }));
+  return {art,captions};
+ }
+}
 function drawComicPage(page:PDFPage,art:PDFImage,scene:Book["scenes"][number],font:PDFFont,index:number,sceneCount:number,layoutVersion:Book["comicLayoutVersion"]){
  page.drawRectangle({x:0,y:0,width:595.28,height:841.89,color:white});
  const sceneTitle=scene.title.toLocaleUpperCase("pl-PL"),title=/^ROZDZIAŁ\s+\d+/u.test(sceneTitle)?sceneTitle:`ROZDZIAŁ ${index+1} · ${sceneTitle}`;let titleSize=15;while(font.widthOfTextAtSize(title,titleSize)>455&&titleSize>10)titleSize-=.5;
  page.drawText(title,{x:47,y:811,font,size:titleSize,color:ink});
  page.drawText(String(index+1)+" / "+sceneCount,{x:505,y:812,font,size:10,color:muted});
+ const layout=comicPageLayout(scene,font);
  if(layoutVersion){
-  page.drawImage(art,{x:52.5,y:59,width:490,height:735});
-  comicSlots(scene,index,layoutVersion).forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot,{x:52.5,y:59,width:490,height:735}));
+  page.drawImage(art,layout.art);
+  comicSlots(scene,index,layoutVersion).forEach((slot,i)=>{
+   if(!layout.captions.some(c=>c.index===i))drawBubble(page,scene.panels![i],font,slot,layout.art);
+  });
+  layout.captions.forEach(c=>c.lines.forEach((line,row)=>page.drawText(line,{x:c.x,y:c.y-c.size-row*c.lineHeight,font,size:c.size,color:ink})));
  }else{
  page.drawImage(art,{x:47,y:59,width:500,height:735});
  page.drawRectangle({x:47,y:59,width:500,height:735,borderColor:ink,borderWidth:1.5});
  legacyComicLayout(index).bubbles.forEach((slot,i)=>drawBubble(page,scene.panels![i],font,slot));
  }
- const teaser=comicNarrativeTeaser(scene.text),boxX=52.5,boxY=59,boxWidth=490,boxHeight=67;
+ const teaser=comicNarrativeTeaser(scene.text),boxX=layout.art.x,boxY=layout.art.y,boxWidth=layout.art.width,boxHeight=layout.art.height*.09;
  page.drawRectangle({x:boxX,y:boxY,width:boxWidth,height:boxHeight,color:deep,opacity:.93,borderColor:white,borderWidth:1});
  page.drawText("ZAJAWKA ROZDZIAŁU",{x:boxX+13,y:boxY+boxHeight-15,font,size:6.8,color:gold});
  let teaserSize=8.2,lines=wrapText(teaser,font,teaserSize,boxWidth-26);
  while(lines.length>4&&teaserSize>6.8){teaserSize-=.2;lines=wrapText(teaser,font,teaserSize,boxWidth-26);}
- if(lines.length>4){const words=teaser.split(" ");while(words.length&&wrapText(words.join(" ")+"…",font,teaserSize,boxWidth-26).length>4)words.pop();lines=wrapText(words.join(" ")+"…",font,teaserSize,boxWidth-26);}
+ const maxTeaserLines=Math.max(1,Math.floor((boxHeight-29)/(teaserSize*1.18)));
+ if(lines.length>maxTeaserLines){const words=teaser.split(" ");while(words.length&&wrapText(words.join(" ")+"…",font,teaserSize,boxWidth-26).length>maxTeaserLines)words.pop();lines=wrapText(words.join(" ")+"…",font,teaserSize,boxWidth-26);}
  const lineHeight=teaserSize*1.18;lines.forEach((line,i)=>page.drawText(line,{x:boxX+13,y:boxY+boxHeight-31-i*lineHeight,font,size:teaserSize,color:white}));
  page.drawText("czytaki.",{x:47,y:27,font,size:12,color:ink});
 }

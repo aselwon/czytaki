@@ -5,7 +5,7 @@ import {readFileSync,readdirSync} from 'node:fs';
 import {build} from 'esbuild';
 
 const root=new URL('../',import.meta.url).pathname;
-const compiled=await build({stdin:{contents:'export * from "./lib/server/ai"; export * from "./lib/server/ai-costs"; export * from "./lib/server/ai-budget";',resolveDir:root},bundle:true,write:false,platform:'node',format:'esm',plugins:[{
+const compiled=await build({stdin:{contents:'export * from "./lib/server/ai"; export * from "./lib/server/ai-costs"; export * from "./lib/server/ai-budget"; export * from "./lib/server/lettering-diagnostics";',resolveDir:root},bundle:true,write:false,platform:'node',format:'esm',plugins:[{
  name:'offline-ai',setup(build){
   build.onResolve({filter:/^cloudflare:workers$/},()=>({path:'env',namespace:'offline'}));
   build.onLoad({filter:/.*/,namespace:'offline'},()=>({contents:'export const env=globalThis.__aiCostEnv;'}));
@@ -201,20 +201,30 @@ test('rejected reservation sends only capacity alert below 80 percent',async t=>
  assert.equal(s.calls,1);assert.match(s.requests[0].body,/100%/);
 });
 
-test('layout rejection persists a safe reason in D1 without extra AI calls',async t=>{
+test('geometry uses one call and persists only sanitized geometry and per-beat decisions',async t=>{
  const s=setup(t);
  const raw=JSON.parse(readFileSync(root+'tests/fixtures/closeup-analysis.json','utf8'));
- raw.beats[1].confidence=.2;
+ raw.beats[1].confidence=.6;raw.private='Synthetic private copy';raw.beats[1].line='Synthetic private copy';
  s.response={usage:{input_tokens:1,output_tokens:1},output:[{content:[{type:'output_text',text:JSON.stringify(raw)}]}]};
  const scene={title:'Synthetic private title',panels:Array.from({length:5},()=>({kind:'dialogue',line:'Synthetic private copy'}))};
- await assert.rejects(ai.locateComicSpeech('order',scene,new Uint8Array([1])),e=>e.status===422);
- assert.equal(s.calls,2);
- assert.equal(s.db.prepare('SELECT lettering_rejection FROM orders').get().lettering_rejection,'Uncertain speaker');
+ const boxes=await ai.locateComicSpeech('order',scene,new Uint8Array([1]),ai.saveLetteringAnalysis(env.DB,'order',0));
+ assert.equal(boxes[1].speaker,undefined);assert.equal(s.calls,1);
+ const saved=s.db.prepare('SELECT lettering_analysis FROM orders').get().lettering_analysis;
+ assert.doesNotMatch(saved,/Synthetic private|line|title/);
+ const entry=JSON.parse(saved)['0'];assert.equal(entry.analysis.beats[1].confidence,.6);
+ assert.equal(entry.decisions[1].placement,'caption');assert.match(entry.decisions[1].reason,/Beat 1:/);
  assert.ok(s.requests.every(r=>r.url.endsWith('/responses')));
- // Malformed responses must not persist snippets of customer/model content.
- s.response.output[0].content[0].text='private content, invalid JSON';
- await assert.rejects(ai.locateComicSpeech('order',scene,new Uint8Array([1])),e=>e.status===422);
- assert.equal(s.db.prepare('SELECT lettering_rejection FROM orders').get().lettering_rejection,'Invalid placement analysis');
+});
+for(const invalid of ['json','duplicate'])test(`invalid ${invalid} twice returns all-strip after exactly two calls`,async t=>{
+ const s=setup(t);
+ const raw=JSON.parse(readFileSync(root+'tests/fixtures/closeup-analysis.json','utf8'));raw.beats[1].index=0;
+ s.response={usage:{input_tokens:1,output_tokens:1},output:[{content:[{type:'output_text',text:invalid==='json'?'private invalid JSON':JSON.stringify(raw)}]}]};
+ const scene={title:'Private title',panels:Array.from({length:5},()=>({kind:'dialogue',line:'Private line'}))};
+ const boxes=await ai.locateComicSpeech('order',scene,new Uint8Array([1]),ai.saveLetteringAnalysis(env.DB,'order',2));
+ assert.equal(s.calls,2);assert.equal(boxes.length,5);assert.ok(boxes.every(b=>b.placement==='strip'&&!b.speaker));
+ const saved=s.db.prepare('SELECT lettering_analysis FROM orders').get().lettering_analysis;
+ assert.doesNotMatch(saved,/private|Private/);assert.equal(JSON.parse(saved)['2'].analysis,null);
+ assert.ok(JSON.parse(saved)['2'].decisions.every((d,i)=>d.reason===`Beat ${i}: Invalid placement analysis`));
 });
 test('close-up layout succeeds with one existing analysis call',async t=>{
  const s=setup(t);

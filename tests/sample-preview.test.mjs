@@ -137,3 +137,12 @@ test('migration preserves a legacy ready book and its checkout and delivery',asy
  assert.equal(s.calls.filter(c=>c.url.includes('resend')).length,1);
  const pdf=await api.download(request('/download',{headers:{cookie}}),{params});assert.equal(pdf.status,200);assert.equal(await pdf.text(),'%PDF');
 });
+
+test('fallback captions render outside preview artwork without an overlay or tail',()=>{
+ const order={format:'comic',id:'fixture',name:'Test',sceneCount:6,comicLayoutVersion:2,
+  previewPanels:[{line:'Podpis poza ilustracją',kind:'dialogue'}],
+  previewLettering:[{x:0,y:0,width:1,height:.1,placement:'strip'}]};
+ const html=renderToStaticMarkup(React.createElement(api.ComicPreview,{order}));
+ assert.match(html,/<\/div><p>1\. Podpis poza ilustracją<\/p>/);
+ assert.doesNotMatch(html,/comic-lettering|<svg/);
+});

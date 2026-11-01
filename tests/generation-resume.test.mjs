@@ -13,7 +13,7 @@ const compiled=await build({entryPoints:[root+'app/api/orders/[id]/generate/rout
    ai:`import {ContentSafetyError} from '${root}lib/server/content-safety.ts';
        export const generateBook=()=>{throw new Error('Unexpected story generation');};
        export const generateIllustration=async()=>{globalThis.__resume.images++;if(globalThis.__resume.unsafe)throw new ContentSafetyError(true);return new Uint8Array([1,2,3]);};
-       export const locateComicSpeech=async()=>{globalThis.__resume.analyses++;if(globalThis.__resume.failAnalysis)throw new Error('Simulated layout failure');return Array.from({length:5},()=>({x:.1,y:.1,width:.2,height:.1}));};`,
+       export const locateComicSpeech=async(id,scene,image,onAnalysis)=>{globalThis.__resume.analyses++;if(globalThis.__resume.failAnalysis)throw new Error('Simulated layout failure');await onAnalysis?.({analysis:null,decisions:[{index:0,placement:'strip',reason:'Beat 0: Invalid placement analysis'}]});return Array.from({length:5},()=>({x:.1,y:.1,width:.2,height:.1}));};`,
    runtime:`export class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
     export const runtime=()=>globalThis.__resume.env;
     export const infrastructure=runtime;
@@ -31,8 +31,9 @@ const {POST}=await import('data:text/javascript;base64,'+Buffer.from(compiled.ou
 function setup(t,{cached=false,photo=true,locked=false,paid=true,verified=true,status="generating"}={}){
  const db=new DatabaseSync(':memory:');
  db.exec('CREATE TABLE orders (id TEXT PRIMARY KEY,status TEXT,payment_status TEXT,payment_verified_at INTEGER,generated INTEGER,book TEXT,photo_key TEXT,photo_type TEXT,lock_token TEXT,lock_until INTEGER,updated_at INTEGER)');
+ db.exec('ALTER TABLE orders ADD COLUMN lettering_analysis TEXT; ALTER TABLE orders ADD COLUMN lettering_rejection TEXT');
  const book={title:'Test',comicLayoutVersion:2,scenes:[{title:'Testowa scena'}]};
- db.prepare('INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('fixture',status,paid?'paid':'unpaid',verified?1:null,0,JSON.stringify(book),photo?'photo.jpg':null,'image/jpeg',null,locked?Date.now()+300000:0,0);
+ db.prepare('INSERT INTO orders (id,status,payment_status,payment_verified_at,generated,book,photo_key,photo_type,lock_token,lock_until,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('fixture',status,paid?'paid':'unpaid',verified?1:null,0,JSON.stringify(book),photo?'photo.jpg':null,'image/jpeg',null,locked?Date.now()+300000:0,0);
  const objects=new Map();
  const imageKey='orders/fixture/comic-overlay-v2/scene-0.jpg';
  if(cached)objects.set(imageKey,new Uint8Array([1,2,3]));
@@ -53,6 +54,7 @@ test('cached illustration can resume lettering without the source photo',async t
  assert.equal(s.images,0);assert.equal(s.analyses,1);assert.equal(s.order().generated,1);
  assert.equal(JSON.parse(s.order().book).scenes[0].placementVersion,1);
  assert.equal(s.order().lock_until,0);
+ assert.equal(JSON.parse(s.order().lettering_analysis)['0'].decisions[0].placement,'strip');
 });
 test('failed layout saves art, releases the lock and retries without regenerating',async t=>{
  const s=setup(t);s.failAnalysis=true;
