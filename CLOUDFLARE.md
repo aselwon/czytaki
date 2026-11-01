@@ -207,3 +207,26 @@ tym stanie i sprawdzić przykładowe zamówienie, PDF oraz obrazy. Dla kopii z
 produkcyjnego konta potrzebny jest osobny, zatwierdzony przez właściciela eksport
 D1 i inwentarz/odczyt R2 zdalnymi narzędziami posiadającymi uprawnienia tylko do
 odczytu; nie kieruj zdalnego eksportu na lokalny skrypt przez `--remote`.
+
+## Test checkout while public sales are disabled (CZ-21)
+
+The owner may configure the optional `TEST_CHECKOUT_TOKEN` secret using the
+Cloudflare secrets API or `npm run cf -- secret put TEST_CHECKOUT_TOKEN --config dist/server/wrangler.json`.
+Use a long, randomly generated value; never put it in source, logs, screenshots,
+or shared URLs. Keep `SALES_ENABLED=false` and use a Stripe `sk_test_` key.
+Open `https://<shop>/?test_checkout=<secret>` privately once. The Worker immediately
+redirects to the URL without the token and sets a signed, 24-hour `__Host-` cookie
+with HttpOnly, Secure and SameSite=Lax. HTTPS is required. The redirect uses
+`no-store` and `no-referrer`; the application does not log the token or cookie.
+Do not enable infrastructure request logging that captures query strings or cookies.
+Check browser history during hosted acceptance: server redirects cannot erase URLs
+already saved, pasted, synced or recorded by browser extensions or upstream logs.
+
+Only that browser receives `checkout:true` and can create a test checkout session.
+Webhook secret, Resend configuration, sender, app URL and price remain required
+(with the existing localhost webhook exception unchanged). A live Stripe key or
+missing test secret disables the bypass. Remove or rotate the secret to revoke all
+test cookies, or clear the browser cookie to revoke that browser's access.
+This gate does not mark orders paid, authorize AI, bypass the verified Stripe
+webhook, or change CZ-20 daily cost limits. Hosted purchase/AI/email verification
+remains an owner-only step; agents use offline provider mocks.

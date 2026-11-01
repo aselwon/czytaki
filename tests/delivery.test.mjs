@@ -14,6 +14,7 @@ const compiled=await build({entryPoints:[new URL('../lib/server/payments.ts',imp
    export const infrastructure=runtime;
    export const findOrder=async id=>globalThis.__deliveryTest.order(id);
    export const salesReady=()=>true;
+   export const salesConfigured=()=>true;
    export const settings=r=>JSON.parse(r.settings);
    export const story=r=>r.book?JSON.parse(r.book):null;
   `}));

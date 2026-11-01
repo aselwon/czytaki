@@ -16,7 +16,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}) {
     const now=Date.now();
     const claim=await infrastructure().DB.prepare("UPDATE orders SET lock_token=?,lock_until=? WHERE id=? AND lock_until<?").bind(lock,now+60000,id,now).run();
     if(!claim.meta.changes)throw new HttpError(409,"Płatność jest już przygotowywana. Spróbuj za chwilę.");
-    return Response.json({url:await checkoutSession(await findOrder(id),email.data)});
+    return Response.json({url:await checkoutSession(await findOrder(id),email.data,req)});
   } catch(e) {
     return apiError(e);
   } finally {
