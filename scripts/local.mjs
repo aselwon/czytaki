@@ -23,9 +23,9 @@ function run(args){
 }
 
 run(["scripts/run-framework.mjs","build"]);
-run(["--import","./scripts/sites-env.mjs",wrangler,"d1","execute","DB","--local","--persist-to",".wrangler/state","--config","dist/server/wrangler.json","--file","scripts/local-schema.sql"]);
+run([wrangler,"d1","execute","DB","--local","--persist-to",".wrangler/state","--config","dist/server/wrangler.json","--file","scripts/local-schema.sql"]);
 if(setupOnly){console.log("Lokalna baza i aplikacja są gotowe.");process.exit(0);}
 
-const child=spawn(process.execPath,["--import","./scripts/sites-env.mjs",wrangler,"dev","--config","dist/server/wrangler.json","--local","--persist-to",".wrangler/state","--ip","127.0.0.1","--port","8787","--inspector-port","0",...localVariables,"--var","APP_URL:http://127.0.0.1:8787","--var",`SALES_ENABLED:${process.env.SALES_ENABLED==="true"?"true":"false"}`,"--var",`PRICE_CENTS:${process.env.PRICE_CENTS||"2900"}`,"--var",`REGULAR_PRICE_CENTS:${process.env.REGULAR_PRICE_CENTS||"5900"}`,"--var","DAILY_GENERATION_LIMIT:0"],{cwd:root,stdio:"inherit",env:process.env});
+const child=spawn(process.execPath,[wrangler,"dev","--config","dist/server/wrangler.json","--local","--persist-to",".wrangler/state","--ip","127.0.0.1","--port","8787","--inspector-port","0",...localVariables,"--var","APP_URL:http://127.0.0.1:8787","--var",`SALES_ENABLED:${process.env.SALES_ENABLED==="true"?"true":"false"}`,"--var",`PRICE_CENTS:${process.env.PRICE_CENTS||"2900"}`,"--var",`REGULAR_PRICE_CENTS:${process.env.REGULAR_PRICE_CENTS||"5900"}`,"--var","DAILY_GENERATION_LIMIT:0"],{cwd:root,stdio:"inherit",env:process.env});
 for(const signal of ["SIGINT","SIGTERM"])process.on(signal,()=>child.kill(signal));
 child.on("exit",code=>process.exit(code??0));

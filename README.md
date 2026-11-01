@@ -47,9 +47,9 @@ Zacznij od Stripe w trybie testowym. Webhook: /api/payments/webhook; zdarzenia c
 
 Waluta jest dobierana po kraju rozpoznanym przez Cloudflare, z językiem przeglądarki jako zapasowym sygnałem. Ceny 8/15/30 stron to: Polska 29/39/65 PLN, USA 7,99/9,99/16,99 USD, Szwecja 79/99/169 SEK, Norwegia 69/99/159 NOK, Dania 49/69/109 DKK oraz Finlandia 6,99/8,99/14,99 EUR. Cena, wariant i waluta zostają zapisane w zamówieniu, a Stripe musi potwierdzić dokładnie tę samą kwotę.
 
-Aktualny Site jest prywatny. Webhook Stripe wymaga osiągalnego adresu bez logowania do Sites; przed sprzedażą trzeba uzgodnić publiczny dostęp lub osobny endpoint. Nie zmieniono odbiorców wdrożenia automatycznie.
+Webhook Stripe wymaga osiągalnego publicznego adresu; przed sprzedażą trzeba potwierdzić publiczny dostęp endpointu. Nie zmieniono odbiorców wdrożenia automatycznie.
 
-Dane zamówień i pełne historie: D1 DB; ilustracje i PDF: prywatny R2 BUCKET. Panel obsługi pod `/admin` pozwala wyszukiwać po numerze zamówienia, e-mailu, bohaterze, tytule lub identyfikatorze Stripe, sprawdzać treść historii i statusy oraz otwierać PDF. Stripe otrzymuje wewnętrzny identyfikator zamówienia w `client_reference_id` i metadanych, ale nie jest magazynem historii ani plików. Migracje z katalogu `drizzle/` są pakowane przez Sites. Lokalnie po build można zastosować schemat przez Wrangler `d1 execute DB --local` z konfiguracją `dist/server/wrangler.json` i `persist-to .wrangler/state`.
+Dane zamówień i pełne historie: D1 DB; ilustracje i PDF: prywatny R2 BUCKET. Panel obsługi pod `/admin` pozwala wyszukiwać po numerze zamówienia, e-mailu, bohaterze, tytule lub identyfikatorze Stripe, sprawdzać treść historii i statusy oraz otwierać PDF. Stripe otrzymuje wewnętrzny identyfikator zamówienia w `client_reference_id` i metadanych, ale nie jest magazynem historii ani plików. Migracje z katalogu `drizzle/` są pakowane podczas builda Cloudflare. Lokalnie po build można zastosować schemat przez Wrangler `d1 execute DB --local` z konfiguracją `dist/server/wrangler.json` i `persist-to .wrangler/state`.
 
 Na produkcji panel musi być dodatkowo osłonięty przez Cloudflare Access dla ścieżek `/admin*` oraz `/api/admin/*`, z logowaniem przez zatwierdzone konto i MFA. Hasło aplikacyjne pozostaje drugą, niezależną warstwą. Nie wystawiaj panelu publicznie wyłącznie z jednym formularzem hasła.
 
