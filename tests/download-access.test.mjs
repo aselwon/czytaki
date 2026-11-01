@@ -6,6 +6,7 @@ const root=new URL('../',import.meta.url).pathname;
 const bundled=await build({stdin:{contents:`
  export {GET as download} from './app/api/orders/[id]/download/route.ts';
  export {GET as adminDownload} from './app/api/admin/orders/[id]/download/route.ts';
+ export {POST as adminLogin} from './app/api/admin/session/route.ts';
  export {adminCookie} from './lib/server/admin.ts';
  export {hash,boundedBytes} from './lib/server/runtime.ts';
 `,resolveDir:root},bundle:true,write:false,platform:'node',format:'esm',tsconfig:root+'tsconfig.json',plugins:[{
@@ -15,7 +16,7 @@ const bundled=await build({stdin:{contents:`
  }
 }]});
 const env={};globalThis.__accessTestEnv=env;
-const {download,adminDownload,adminCookie,hash,boundedBytes}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
+const {download,adminDownload,adminCookie,adminLogin,hash,boundedBytes}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
 const id='11111111-1111-4111-8111-111111111111';
 const owner='a'.repeat(73),stranger='b'.repeat(73);
 test('bounded body reader rejects chunked data exceeding the editor limit without a size header',async()=>{
@@ -71,6 +72,19 @@ test('admin download requires a signed session, not an owner cookie',async()=>{
  const s=await setup();
  const r=await adminDownload(s.request('czytaki_session='+owner),{params:Promise.resolve({id})});
  assert.equal(r.status,401);assert.equal(s.calls.db,0);assert.equal(s.calls.bucket,0);
+});
+test('admin login accepts only the configured password',async()=>{
+ env.APP_URL='https://shop.example';
+ env.ADMIN_PASSWORD='offline-test-password-not-a-real-secret';
+ env.DB={prepare(){return {bind(){return {
+  async first(){return null;},
+  async run(){return {success:true};},
+ };}};}};
+ const request=password=>new Request('https://shop.example/api/admin/session',{method:'POST',headers:{origin:'https://shop.example','content-type':'application/json'},body:JSON.stringify({password})});
+ assert.equal((await adminLogin(request('wrong-password'))).status,401);
+ const accepted=await adminLogin(request(env.ADMIN_PASSWORD));
+ assert.equal(accepted.status,200);
+ assert.match(accepted.headers.get('set-cookie'),/^__Host-czytaki_admin=/);
 });
 test('signed admin can download, forged signature is rejected',async()=>{
  const s=await setup(),cookie=(await adminCookie(s.request())).split(';')[0];

@@ -1,0 +1,7 @@
+.legal-document { max-width: 800px; margin: auto; padding: 24px; line-height: 1.7; overflow-wrap: anywhere; }
+.legal-document h1 { font-size: 2rem; margin: 24px 0; }
+.legal-document h2 { font-size: 1.3rem; margin: 28px 0 12px; }
+.legal-document p { margin: 12px 0; }
+.legal-document a { text-decoration: underline; text-underline-offset: 3px; }
+.legal-draft { padding: 16px; border: 2px solid currentColor; border-radius: 12px; }
+.legal-document footer { padding: 24px 0; }

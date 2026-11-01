@@ -26,7 +26,7 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
   const prefix=templatePrefix(id,COMIC_LAYOUT_VERSION),staged=await BUCKET.get(`${prefix}/book.json`);
   let b=staged?bookSchema.parse(await staged.json()):null,progress=0,ready=false;
   if(!b){
-   b=originalBook.scenes.every(scene=>scene.panels?.length===5)?structuredClone(originalBook):await planLegacyComic(p,originalBook);
+   b=originalBook.scenes.every(scene=>scene.panels?.length===5)?structuredClone(originalBook):await planLegacyComic(r.id,p,originalBook);
    b.comicLayoutVersion=COMIC_LAYOUT_VERSION;
    b.scenes.forEach((scene,i)=>{scene.comicTemplate=comicTemplateIndex(b!.title+p.name,i);delete scene.lettering;});
    await BUCKET.put(`${prefix}/book.json`,JSON.stringify(b),{httpMetadata:{contentType:"application/json"}});
@@ -40,9 +40,9 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
     const source=next?await BUCKET.get(sceneImageKey(id,b,0)):await BUCKET.get(sceneImageKey(id,originalBook,0,r.pdf_key));
     if(!source)throw new HttpError(503,"Brakuje ilustracji referencyjnej do przeróbki.");
     const cached=await BUCKET.get(sceneImageKey(id,b,next));
-    const result=cached?new Uint8Array(await cached.arrayBuffer()):await generateIllustration(p,b,next,new Uint8Array(await source.arrayBuffer()),next?"image/jpeg":sceneImageType(originalBook),undefined,"illustration");
+    const result=cached?new Uint8Array(await cached.arrayBuffer()):await generateIllustration(r.id,p,b,next,new Uint8Array(await source.arrayBuffer()),next?"image/jpeg":sceneImageType(originalBook),undefined,"illustration");
     if(!cached)await BUCKET.put(sceneImageKey(id,b,next),result,{httpMetadata:{contentType:"image/jpeg"}});
-    b.scenes[next].lettering=await locateComicSpeech(b.scenes[next],result);b.scenes[next].placementVersion=1;
+    b.scenes[next].lettering=await locateComicSpeech(r.id,b.scenes[next],result);b.scenes[next].placementVersion=1;
     await BUCKET.put(sceneImageKey(id,b,next),result,{httpMetadata:{contentType:"image/jpeg"}});
     await BUCKET.put(`${prefix}/book.json`,JSON.stringify(b),{httpMetadata:{contentType:"application/json"}});
     progress=next+1;
