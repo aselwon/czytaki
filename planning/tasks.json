@@ -300,6 +300,26 @@
       ],
       "tier": "planner",
       "status": "done"
+    },
+    {
+      "id": "CZ-23",
+      "title": "Dymki komiksu nigdy nie blokują książeczki: deterministyczny fallback podpisu",
+      "priority": "high",
+      "description": "Po wdrożeniu CZ-22 (wersja 1043d68f = main d621cf1) testowe zamówienie CZ-14 06804778… nadal stoi na ilustracji 1/6 z 422 'Nie udało się bezpiecznie ustawić dymków…' (4 kliknięcia 'Kontynuuj', 8 wywołań gpt-5.4, ok. 150 gr bez efektu). D1 orders.lettering_rejection = 'Uncertain speaker'. Przyczyna: beat 1 sceny 0 to dialog ('Czas odkryć tajemnicę!') do kadru 'Close-up of Kubus’s star-shaped brooch' — na obrazie widać tylko tułów i broszkę, bez twarzy/ust, więc gpt-5.4 uczciwie zwraca confidence < 0.85 (prompt retry wręcz zabrania podnoszenia confidence), a planAdaptiveLettering w lib/adaptive-lettering.ts rzuca błąd dla CAŁEJ strony. Każdy powód geometryczny (Uncertain speaker, speaker poza bounds, No safe space…, Speech bubbles overlap, Invalid placement analysis) to twardy stop całej książki i płatne ponowienie, które deterministycznie kończy się tak samo. Dodatkowo surowa analiza nie jest zapisywana (locateComicSpeech ma parametr onAnalysis, ale generate/remake go nie przekazują), a powód nie zawiera numeru beatu. Napraw tak, by rozmieszczenie NIGDY nie blokowało książeczki, przy zachowaniu bezpieczeństwa (żaden tekst nie zasłania protectedAreas/speakerBounds): (1) per beat, nie per strona: dialog z confidence < 0.85, speaker=null, punktem poza bounds lub bez miejsca obok mówiącego degraduje się do dymka/podpisu BEZ ogonka (bez przypisania do postaci) w dowolnym wolnym miejscu strony poza protectedAreas, nad y=0.90 — tak jak narracja w CZ-22; dialogi z pewnym mówiącym zostają z ogonkiem jak dziś. (2) Gdy dla beatu nie ma żadnego bezpiecznego pola na ilustracji (albo przeszukiwanie kolizji przekroczy limit), jego linia trafia do deterministycznego pasa podpisów POZA pikselami ilustracji (np. lib/server/pdf.ts drawComicPage: ilustracja zmniejszona/przesunięta tak, by powstał biały pas podpisów nad zajawką lub zajawka+podpisy w jednym pasku; numer beatu przy linii), z dopasowaniem fontu jak w fitBubbleCopy/pdf.ts. (3) Gdy analiza jest nieprawidłowa (JSON/schemat/indeksy) także po drugiej próbie — wszystkie 5 linii idą do pasa podpisów; zero 422 z powodu rozmieszczenia. (4) Druga próba gpt-5.4 tylko dla nieprawidłowej analizy (parse/schema); odrzucenia geometryczne od razu korzystają z fallbacku (bez drugiego płatnego wywołania). (5) Zapisz w D1 (migracja drizzle) zsanityzowaną analizę: tylko liczby/geometria i indeksy, bez tekstów klienta, oraz decyzję per beat (bubble|caption|strip) i powód z numerem beatu — przez onAnalysis w generate i remake; widoczne w panelu admina lub w D1. (6) W generateBook/planLegacyComic dopisz do promptu (bez zmiany modeli): beat typu dialogue musi pokazywać twarz mówiącego; zbliżenia na przedmioty tylko jako narracja. Zachowaj: limit 5 zł (CZ-20), brak nowych wywołań obrazu przy 'Kontynuuj' (używa zapisanego obrazu R2), ogonek wskazuje mówiącego, dolne 9% na zajawkę.",
+      "acceptance": [
+        "Test regresji: fikstura tests/fixtures/closeup-analysis.json z beat 1 ustawionym na confidence 0.6 (wariant A) oraz speaker=null i speakerBounds=null (wariant B) — dokładnie przypadek zamówienia 06804778… — planAdaptiveLettering zwraca 5 pól, beat 1 bez speaker (bez ogonka), żadne pole nie nachodzi na protectedAreas ani speakerBounds; to samo dla lustrzanego odbicia strony.",
+        "Test: protectedAreas pokrywają cały region i całą stronę — wynik nie rzuca, linie trafiają do pasa podpisów poza ilustracją; w pdf.test.mjs pas podpisów nie nachodzi na prostokąt ilustracji, tekst 55 znaków × 5 mieści się.",
+        "Test: nieprawidłowa analiza 2× (np. zduplikowany index) → locateComicSpeech zwraca układ 'wszystko w pasie', bez 422; odrzucenie geometryczne nie wywołuje drugiego żądania OpenAI (mock fetch liczy wywołania = 1).",
+        "Zaktualizowany test 'unsafe, uncertain and duplicate speaker maps fail closed': niepewny/brak mówiącego nie rzuca, tylko nie przypisuje ogonka; niebezpieczne pola nadal nigdy nie zasłaniają postaci.",
+        "Istniejące testy (fikstura Figo, close-up CZ-22, lustrzane, pdf.test.mjs, ai-costs, generation-resume) zielone; npm test && npm run lint zielone.",
+        "Migracja D1 z zsanityzowaną analizą i decyzjami per beat (bez tekstów klienta); test, że zapis nie zawiera linii dialogu.",
+        "Po wdrożeniu właściciel klika 'Kontynuuj generowanie' w zamówieniu 06804778… i ilustracja 1 przechodzi dalej po co najwyżej 1 wywołaniu gpt-5.4; bez zmian modeli i limitu 500 gr/dobę."
+      ],
+      "dependsOn": [
+        "CZ-22"
+      ],
+      "tier": "planner",
+      "status": "todo"
     }
   ]
 }
