@@ -36,7 +36,6 @@ MVP jest gotowe, gdy **wszystkie** punkty są odhaczone i każdy ma dowód (PR, 
 ## 5. Hosting i operacje
 
 - [ ] Wdrożenie na koncie Cloudflare właściciela `2791466c5820cfd886aad95e0d3ef948` z nowymi D1 i R2; `cloudflare.production.json` nie wskazuje już konta `130aa5101f2a9a9e790f166b0f54abae`.
-- [ ] Brak zależności od ChatGPT Sites: `app/chatgpt-auth.ts` i `scripts/sites-env.mjs` usunięte, build i testy zielone (grep w CI).
 - [ ] Publiczny adres aplikacji i webhooka Stripe; `/admin*` i `/api/admin/*` za Cloudflare Access z MFA (curl bez Access → 302/403).
 - [ ] `SALES_ENABLED=true` dopiero po odhaczeniu sekcji 1–4.
 - [ ] Backup D1 (eksport) i procedura odtworzenia sprawdzona na kopii.

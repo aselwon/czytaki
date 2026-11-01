@@ -18,7 +18,7 @@ Braki blokujące sprzedaż:
 4. Brak retencji i usuwania zdjęć porzuconych zamówień (RODO), brak regulaminu i polityki prywatności.
 5. Moderacja ilustracji wyjściowych i reguły bezpieczeństwa treści dla dzieci niezweryfikowane testami.
 6. Brak testu E2E i CI; 1 test i lint czerwone.
-7. Hosting: `cloudflare.production.json` wskazuje konto Cloudflare `130aa5101f2a9a9e790f166b0f54abae`. **Decyzja: przenosimy na konto właściciela `2791466c5820cfd886aad95e0d3ef948`** (nowe D1 i R2). Kod zawiera zależności od ChatGPT Sites (`app/chatgpt-auth.ts`, `scripts/sites-env.mjs`) — **do usunięcia**.
+7. Hosting: `cloudflare.production.json` wskazuje konto Cloudflare `130aa5101f2a9a9e790f166b0f54abae`. **Decyzja: przenosimy na konto właściciela `2791466c5820cfd886aad95e0d3ef948`** (nowe D1 i R2).
 
 ## Zakres (in scope)
 
@@ -28,7 +28,7 @@ Braki blokujące sprzedaż:
 - Bezpieczeństwo treści dla dzieci: moderacja zdjęcia, danych, tekstu i wygenerowanych ilustracji; zablokowane kategorie; test na zestawie przypadków.
 - RODO: usuwanie zdjęcia źródłowego po złożeniu PDF, a najpóźniej **automatycznie po 7 dniach** od przesłania (także dla porzuconych zamówień), retencja ilustracji i PDF, usunięcie na żądanie, regulamin, polityka prywatności, zgoda na wizerunek.
 - Pełny test zakupu w trybie testowym Stripe i Resend na środowisku hostowanym; procedura zwrotu ręcznego przy błędzie generowania po płatności.
-- Hosting na koncie Cloudflare właściciela `2791466c5820cfd886aad95e0d3ef948` (nowe D1 i R2, migracje od zera), publiczny webhook, `/admin*` za Cloudflare Access. Usunięcie zależności od ChatGPT Sites.
+- Hosting na koncie Cloudflare właściciela `2791466c5820cfd886aad95e0d3ef948` (nowe D1 i R2, migracje od zera), publiczny webhook, `/admin*` za Cloudflare Access.
 - CI: install, lint, typecheck, testy, E2E z atrapami.
 - Polski rynek jako pierwszy (PLN); pozostałe waluty mogą zostać, ale nie są wymagane w DoD.
 

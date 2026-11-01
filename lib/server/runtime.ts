@@ -5,7 +5,7 @@ import {env} from "cloudflare:workers";
 import {productSchema,bookSchema,sceneCountForPages,type ProductInput,type Book,type OrderView} from "../product";
 import {comicLetteringBoxes} from "../comic-layouts";
 import {basePrice,regularAmountForCurrency} from "./pricing";
-export type Runtime={DB:D1Database;BUCKET:R2Bucket;OPENAI_API_KEY?:string;OPENAI_TEXT_MODEL?:string;OPENAI_LAYOUT_MODEL?:string;OPENAI_IMAGE_MODEL?:string;STRIPE_SECRET_KEY?:string;STRIPE_WEBHOOK_SECRET?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;APP_URL?:string;PRICE_CENTS?:string;REGULAR_PRICE_CENTS?:string;SALES_ENABLED?:string;DAILY_GENERATION_LIMIT?:string;DEMO_PDF_ORDER_ID?:string;PDF_PREVIEW_ORDER_ID?:string;ADMIN_PASSWORD?:string;};
+export type Runtime={DB:D1Database;BUCKET:R2Bucket;OPENAI_API_KEY?:string;OPENAI_TEXT_MODEL?:string;OPENAI_LAYOUT_MODEL?:string;OPENAI_IMAGE_MODEL?:string;STRIPE_SECRET_KEY?:string;STRIPE_WEBHOOK_SECRET?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;APP_URL?:string;PRICE_CENTS?:string;REGULAR_PRICE_CENTS?:string;SALES_ENABLED?:string;DAILY_GENERATION_LIMIT?:string;DEMO_PDF_ORDER_ID?:string;PDF_PREVIEW_ORDER_ID?:string;ADMIN_PASSWORD?:string;DELETE_TOKEN_SECRET?:string;PHOTO_RETENTION_DAYS?:string;RETENTION_DAYS?:string;};
 export const runtime=()=>env as unknown as Runtime;
 export class HttpError extends Error{constructor(public status:number,message:string){super(message);}}
 export const apiError=(e:unknown)=>{if(e instanceof HttpError)return Response.json({error:e.message},{status:e.status,headers:{"Cache-Control":"no-store"}});console.error("Czytaki request failed",e instanceof Error?e.name:"UnknownError");return Response.json({error:"Usługa jest chwilowo niedostępna. Spróbuj ponownie."},{status:503});};
