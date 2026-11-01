@@ -32,5 +32,5 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Test
+      - name: Tests including offline purchase E2E
         run: npm test
