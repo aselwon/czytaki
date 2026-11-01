@@ -340,6 +340,23 @@
       ],
       "tier": "planner",
       "status": "done"
+    },
+    {
+      "id": "CZ-25",
+      "title": "Nagłówek kroku 4 zgodny ze stanem zamówienia (płatność, generowanie, wysłano)",
+      "priority": "normal",
+      "description": "W app/studio.tsx (linia z 'studio-intro', gałąź step 4) podtytuł nagłówka jest stały: 'Po potwierdzeniu płatności wyślemy gotową książeczkę jako załącznik PDF.' Wyświetla się nawet po opłaceniu i wysłaniu książeczki (zamówienie testowe 06804778: payment_status=paid, status=delivered, delivery_status=sent). Wydziel czystą funkcję (np. lib/step4-copy.ts) zwracającą tekst nagłówka na podstawie paymentStatus, status/generated i deliveryStatus, i użyj jej w studio.tsx. Proponowane teksty: nieopłacone -> obecny tekst; opłacone, w trakcie generowania -> 'Płatność przyjęta. Tworzymy Twoją książeczkę – wyślemy ją jako PDF na podany e-mail.'; wysłane -> 'Gotowe! Książeczka PDF została wysłana na podany adres e-mail.' (z adresem, jeśli jest dostępny w stanie); błąd wysyłki -> komunikat o ponownej próbie/kontakcie. Bez zmian w API, płatnościach, generowaniu i modelach; bez płatnych wywołań.",
+      "acceptance": [
+        "Podtytuł kroku 4 zależy od stanu zamówienia: przed płatnością pokazuje obecny tekst, po płatności w trakcie generowania – informację o tworzeniu, po wysłaniu – potwierdzenie wysyłki PDF na e-mail.",
+        "Logika tekstu jest w czystej funkcji z testem jednostkowym pokrywającym stany: unpaid, paid+generating, paid+sent, paid+failed delivery.",
+        "Odświeżenie strony opłaconego, wysłanego zamówienia nie pokazuje już 'Po potwierdzeniu płatności…'.",
+        "npm test, lint i build przechodzą; brak zmian w API, Stripe, generowaniu i modelach."
+      ],
+      "dependsOn": [
+        "CZ-24"
+      ],
+      "tier": "worker",
+      "status": "todo"
     }
   ]
 }
