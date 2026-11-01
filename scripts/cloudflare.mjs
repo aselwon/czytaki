@@ -1,12 +1,14 @@
+import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 // A separate login prevents deployments using another project's account.
 const root = fileURLToPath(new URL("../", import.meta.url));
+const config = JSON.parse(readFileSync(new URL("../cloudflare.production.json", import.meta.url), "utf8"));
 const env = {
   ...process.env,
-  XDG_CONFIG_HOME: `${root}.wrangler/account-adam`,
-  CLOUDFLARE_ACCOUNT_ID: "130aa5101f2a9a9e790f166b0f54abae",
+  XDG_CONFIG_HOME: `${root}.wrangler/account-owner`,
+  CLOUDFLARE_ACCOUNT_ID: config.account_id,
   WRANGLER_SEND_METRICS: "false",
   WRANGLER_WRITE_LOGS: "false",
 };
