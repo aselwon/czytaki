@@ -282,6 +282,24 @@
       ],
       "tier": "planner",
       "status": "done"
+    },
+    {
+      "id": "CZ-22",
+      "title": "Naprawa rozmieszczania dymków komiksu (zbliżenia i narracja)",
+      "priority": "high",
+      "description": "Produkcyjny test CZ-14 (zamówienie 06804778…, Komiks, 8 stron, opłacone testowo) zatrzymuje się na ilustracji 1/6 z 422 'Nie udało się bezpiecznie ustawić dymków…'. 6 wywołań gpt-5.4 (3× Kontynuuj × 2 próby w locateComicSpeech) zakończyło się poprawnym JSON-em (completed, 1,8–3,5 tys. tokenów wyjścia < 6000, obraz przekazany detail:original) — odrzuca je deterministyczny planAdaptiveLettering w lib/adaptive-lettering.ts. Przyczyna (odtworzona lokalnie na geometrii zmierzonej z zapisanego obrazu R2 orders/<id>/comic-overlay-v2/scene-0.jpg): (1) reguły dymka mierzą odległość od PUNKTU mówiącego (|cx-sx|<=0.26, hypot(dx,1.5dy)<=0.22) i wymagają tej samej połowy strony (speaker.x<0.45 ⇒ środek dymka <=0.5), a jednocześnie dymek musi omijać CAŁY speakerBounds z odstępem 0.02. Przy zbliżeniu/dużej postaci (beat 1: popiersie x 0–0.53, punkt ~0.25; beat 3: x 0.15–0.51) nie istnieje żaden kandydat, mimo że model obrazu zostawił pusty obszar tuż obok postaci (po prawej) — 'No safe space beside speaker in beat 1'. (2) beaty narracyjne (kind=narration) też muszą dostać dymek WEWNĄTRZ regionu beatu (min. ok. 0.2×0.1 na 28–29 znaków), choć prompt obrazu każe zostawić dolne 9% na pasek narracji i nie rezerwuje pustego miejsca dla narracji; w zatłoczonym beacie (beat 2: tłum mieszkańców) brak miejsca — 'No safe space beside speaker in beat 2'. Dodatkowo powód odrzucenia jest tylko w console.warn (obserwowalność próbkowana 10%), więc nie da się go odczytać po fakcie. Napraw planowanie (najmniejsza spójna zmiana): sąsiedztwo dymka liczone względem prostokąta speakerBounds (np. odstęp dymka od ciała <= ~0.12 i nakładanie w pionie / bezpośrednio nad głową), reguła tej samej połowy zastąpiona regułą 'dymek nie po przeciwnej stronie innej postaci niż mówiąca'/ogonek do punktu mówiącego; narracja umieszczana w pasku narracji (dolne 9%) albo w dowolnym wolnym miejscu strony poza obszarami chronionymi, z czcionką/łamaniem sprawdzanym jak w pdf.ts. Zachowaj: brak zasłaniania twarzy/ciał (protectedAreas), confidence>=0.85 dla dialogów, limit 5 zł (CZ-20). Zapisz zwięzły powód odrzucenia (bez treści klienta) trwałe w D1 (np. kolumna/rekord przy zamówieniu lub ai_calls) do diagnostyki. Wznowienie tego samego zamówienia przez 'Kontynuuj generowanie' używa zapisanego obrazu (bez nowego wywołania obrazu) — nie zmieniaj tego.",
+      "acceptance": [
+        "Test regresji z fikstury geometrii tego zamówienia (tests/fixtures: speaker beat0 {x:.27,y:.11} bounds {x:.09,y:0,w:.30,h:.245}; beat1 {x:.25,y:.27} bounds {x:0,y:.25,w:.53,h:.18}; beat2 narracja, chronione tłumy {x:0,y:.44,w:.43,h:.16} i {x:.62,y:.445,w:.38,h:.155}; beat3 {x:.33,y:.66} bounds {x:.15,y:.61,w:.36,h:.16}; beat4 narracja; regiony pełnej szerokości y 0/.25/.435/.61/.775) planuje 5 pól bez nakładania na protectedAreas i speakerBounds.",
+        "Istniejące testy tests/adaptive-lettering.test.mjs (w tym fikstura Figo: dymek przy prawym psie) i pdf.test.mjs zielone; dymek dialogu nadal sąsiaduje z mówiącym (test na lustrzane odbicie sceny).",
+        "Narracja nie wymaga pustego miejsca wewnątrz zatłoczonego beatu; tekst narracji mieści się (test z liniami 28–29 znaków).",
+        "Powód odrzucenia planu zapisywany trwale (bez danych klienta) i widoczny w panelu admina lub w D1; test.",
+        "Brak dodatkowych wywołań OpenAI i bez zmian w limicie 5 zł; wdrożone na produkcję, po czym właściciel wznawia zamówienie 06804778… przyciskiem 'Kontynuuj generowanie'."
+      ],
+      "dependsOn": [
+        "CZ-20"
+      ],
+      "tier": "planner",
+      "status": "todo"
     }
   ]
 }
