@@ -3,6 +3,12 @@
   "account_id": "2791466c5820cfd886aad95e0d3ef948",
   "workers_dev": true,
   "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "czytaki.kredkuj.pl",
+      "custom_domain": true
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -28,7 +34,9 @@
     "PREVIEW_WORKERS_AI": "false",
     "PREVIEW_DAILY_NEURON_CAP": "5000",
     "DAILY_GENERATION_LIMIT": "3",
-    "PRICE_CENTS": "2900"
+    "PRICE_CENTS": "2900",
+    "APP_URL": "https://czytaki.kredkuj.pl",
+    "EMAIL_FROM": "Czytaki <zamowienia@czytaki.kredkuj.pl>"
   },
   "observability": {
     "enabled": true,
