@@ -89,11 +89,17 @@ for(const options of [{paid:false},{verified:false}])test('generation rejects un
  assert.equal(s.images,0);assert.equal(s.analyses,0);assert.equal(s.order().generated,0);
 });
 
-for(const status of ['waiting_capacity','needs_refund'])test('generation respects suspended state '+status,async t=>{
+for(const status of ['needs_refund'])test('generation respects suspended state '+status,async t=>{
  const s=setup(t,{status});assert.equal((await s.run()).status,409);
  assert.equal(s.images,0);assert.equal(s.analyses,0);assert.equal(s.order().status,status);
 });
 for(const status of ['ready','assembled','delivered'])test('completed book generation is idempotent '+status,async t=>{
  const s=setup(t,{status});assert.equal((await s.run()).status,200);
  assert.equal(s.images,0);assert.equal(s.analyses,0);assert.equal(s.order().status,status);
+});
+
+test('waiting capacity resumes saved art through generate endpoint',async t=>{
+ const s=setup(t,{status:'waiting_capacity',cached:true});
+ assert.equal((await s.run()).status,200);assert.equal(s.images,0);assert.equal(s.analyses,1);
+ assert.equal(s.order().generated,1);assert.equal(s.order().status,'generating');
 });

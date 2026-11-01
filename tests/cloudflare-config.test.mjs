@@ -13,6 +13,8 @@ test('production configuration targets the owner with private storage and sales 
  assert.equal(config.workers_dev, true);
  assert.equal(config.preview_urls, false);
  assert.equal(config.vars.SALES_ENABLED, 'false');
+ assert.equal(config.vars.OPENAI_DAILY_COST_CAP_GROSZE, '500');
+ assert.equal(config.vars.OPENAI_USD_PLN_RATE, '4.00');
  assert.deepEqual(config.routes, [{pattern: 'czytaki.kredkuj.pl', custom_domain: true}]);
  assert.equal(config.vars.APP_URL, 'https://czytaki.kredkuj.pl');
  assert.equal(config.vars.EMAIL_FROM, 'Czytaki <zamowienia@czytaki.kredkuj.pl>');
