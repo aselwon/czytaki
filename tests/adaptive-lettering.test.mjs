@@ -40,3 +40,49 @@ test('tail points toward the saved speaker and stays within the placement box',(
  assert.notEqual(left,right);assert.match(left,/4\.000 40\.000/);assert.match(right,/196\.000 40\.000/);
  for(const path of [left,right,speechBubblePath(200,80,{x:.5,y:-1})]){assert.equal((path.match(/M /g)||[]).length,1);assert.ok(path.endsWith(' Z'));}
 });
+
+const overlaps=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
+test('close-up geometry and mirrored page fit all five fields without obscuring bodies',async()=>{
+ const raw=JSON.parse(await readFile(new URL('./fixtures/closeup-analysis.json',import.meta.url),'utf8'));
+ const copy=['Hej, chodź tutaj!','Razem odkryjemy nowy świat!','Las '+ 'szumi '.repeat(4),'Spójrz na te piękne kwiaty!','Wszyscy ruszyli razem w drogę'];
+ assert.deepEqual([copy[2].length,copy[4].length],[28,29]);
+ const {PDFDocument}=await import('pdf-lib');
+ const {default:fontkit}=await import('@pdf-lib/fontkit');
+ const {fitBubbleCopy}=await import('../lib/bubble-copy.mjs');
+ const pdf=await PDFDocument.create();pdf.registerFontkit(fontkit);
+ const font=await pdf.embedFont(await readFile(new URL('../lib/assets/LiberationSans-Regular.ttf',import.meta.url)));
+ for(const mirrored of [false,true]){
+  const a=structuredClone(raw);
+  if(mirrored){
+   const mirror=r=>({...r,x:1-r.x-r.width});
+   a.protectedAreas=a.protectedAreas.map(mirror);
+   a.beats=a.beats.map(b=>({...b,speaker:b.speaker?{...b.speaker,x:1-b.speaker.x}:null,speakerBounds:b.speakerBounds?mirror(b.speakerBounds):null,region:mirror(b.region),candidates:b.candidates.map(mirror)}));
+  }
+  const panels=copy.map((line,i)=>({line,kind:a.beats[i].speaker?'dialogue':'narration'}));
+  const boxes=planAdaptiveLettering(a,panels);
+  assert.equal(boxes.length,5);
+  const protectedAreas=[...a.protectedAreas,...a.beats.flatMap(b=>b.speakerBounds?[b.speakerBounds]:[])];
+  boxes.forEach((box,i)=>{
+   assert.ok(protectedAreas.every(area=>!overlaps(box,area)));
+   assert.ok(boxes.slice(0,i).every(prior=>!overlaps(box,prior)));
+   const fit=fitBubbleCopy(copy[i],box.width*490,box.height*735,panels[i].kind,!!box.speaker,(text,size)=>font.widthOfTextAtSize(text,size));
+   assert.equal(fit.lines.join('').replaceAll(' ',''),copy[i].replaceAll(' ',''));
+   if(box.speaker){
+    const body=a.beats[i].speakerBounds;
+    assert.ok(Math.max(box.x-body.x-body.width,body.x-box.x-box.width,0)<=.12);
+    assert.deepEqual(box.speaker,a.beats[i].speaker);
+   }
+  });
+  const crowded=structuredClone(a);crowded.protectedAreas.push(crowded.beats[2].region);
+  const relocated=planAdaptiveLettering(crowded,panels)[2];
+  assert.ok(!overlaps(relocated,crowded.beats[2].region));
+  assert.equal(boxes[1].x+boxes[1].width/2>.5,!mirrored);
+ }
+});
+test('another body between candidate and speaker prevents cross-character attribution',()=>{
+ const a=analysis();
+ a.beats[0].speakerBounds={x:.1,y:0,width:.1,height:.16};
+ a.beats[0].speaker={x:.15,y:.07};
+ a.protectedAreas=[{x:.21,y:0,width:.02,height:.17},{x:0,y:0,width:.08,height:.17}];
+ assert.throws(()=>planAdaptiveLettering(a,panels),/No safe space/);
+});

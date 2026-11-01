@@ -2,6 +2,7 @@ import {sqliteTable,text,integer,index,uniqueIndex} from "drizzle-orm/sqlite-cor
 export const orders=sqliteTable("orders",{
  id:text("id").primaryKey(), ownerHash:text("owner_hash").notNull(), settings:text("settings").notNull(),
  status:text("status").notNull().default("draft"), book:text("book"), generated:integer("generated").notNull().default(0),
+ letteringRejection:text("lettering_rejection"),
  photoKey:text("photo_key"), photoType:text("photo_type"), pdfKey:text("pdf_key"),
  amount:integer("amount").notNull(), currency:text("currency").notNull().default("pln"),
  aiCostCents:integer("ai_cost_cents").notNull().default(0), paymentVerifiedAt:integer("payment_verified_at"),

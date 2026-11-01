@@ -1,0 +1,142 @@
+{
+  "protectedAreas": [
+    {
+      "x": 0,
+      "y": 0.44,
+      "width": 0.43,
+      "height": 0.16
+    },
+    {
+      "x": 0.62,
+      "y": 0.445,
+      "width": 0.38,
+      "height": 0.155
+    }
+  ],
+  "beats": [
+    {
+      "index": 0,
+      "confidence": 0.96,
+      "speaker": {
+        "x": 0.27,
+        "y": 0.11
+      },
+      "speakerBounds": {
+        "x": 0.09,
+        "y": 0,
+        "width": 0.3,
+        "height": 0.245
+      },
+      "region": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 0.25
+      },
+      "candidates": [
+        {
+          "x": 0.7,
+          "y": 0,
+          "width": 0.2,
+          "height": 0.1
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "confidence": 0.96,
+      "speaker": {
+        "x": 0.25,
+        "y": 0.27
+      },
+      "speakerBounds": {
+        "x": 0,
+        "y": 0.25,
+        "width": 0.53,
+        "height": 0.18
+      },
+      "region": {
+        "x": 0,
+        "y": 0.25,
+        "width": 1,
+        "height": 0.185
+      },
+      "candidates": [
+        {
+          "x": 0.7,
+          "y": 0.25,
+          "width": 0.2,
+          "height": 0.1
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "confidence": 0.4,
+      "speaker": null,
+      "speakerBounds": null,
+      "region": {
+        "x": 0,
+        "y": 0.435,
+        "width": 1,
+        "height": 0.175
+      },
+      "candidates": [
+        {
+          "x": 0.7,
+          "y": 0.435,
+          "width": 0.2,
+          "height": 0.1
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "confidence": 0.96,
+      "speaker": {
+        "x": 0.33,
+        "y": 0.66
+      },
+      "speakerBounds": {
+        "x": 0.15,
+        "y": 0.61,
+        "width": 0.36,
+        "height": 0.16
+      },
+      "region": {
+        "x": 0,
+        "y": 0.61,
+        "width": 1,
+        "height": 0.16500000000000004
+      },
+      "candidates": [
+        {
+          "x": 0.7,
+          "y": 0.61,
+          "width": 0.2,
+          "height": 0.1
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "confidence": 0.4,
+      "speaker": null,
+      "speakerBounds": null,
+      "region": {
+        "x": 0,
+        "y": 0.775,
+        "width": 1,
+        "height": 0.125
+      },
+      "candidates": [
+        {
+          "x": 0.7,
+          "y": 0.775,
+          "width": 0.2,
+          "height": 0.1
+        }
+      ]
+    }
+  ]
+}
