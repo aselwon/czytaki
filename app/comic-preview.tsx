@@ -1,4 +1,4 @@
-import {SAMPLE_PREVIEW_LABEL} from "@/lib/sample-preview";
+import {SAMPLE_PREVIEW_LABEL,WORKERS_AI_PREVIEW_LABEL} from "@/lib/sample-preview";
 import BubbleOutline from "./bubble-outline";
 import BubbleCopy from "./bubble-copy";
 import type {OrderView} from "@/lib/product";
@@ -8,7 +8,7 @@ export default function ComicPreview({order,imageSrc,embeddedBubbles=false}:{ord
  const comic=order.format==="comic"&&!!order.previewPanels;
  const templated=comic&&!!order.comicLayoutVersion;
  return <div className={`preview-page ${comic?"comic-preview":""} ${templated?"comic-template-preview":""} ${embeddedBubbles?"embedded-bubbles":""}`}>
-  {order.samplePreview&&<p role="status">{SAMPLE_PREVIEW_LABEL}</p>}
+  {order.samplePreview&&<p role="status">{order.previewWorkersAi?WORKERS_AI_PREVIEW_LABEL:SAMPLE_PREVIEW_LABEL}</p>}
   <div className="preview-art">
    <img src={imageSrc||order.sampleImage||`/api/orders/${order.id}/preview?v=${order.comicVersion||1}`} alt={order.samplePreview?"Przykładowa ilustracja wybranego świata":`Wygenerowana ilustracja bohatera: ${order.name}`}/>
    {comic&&order.previewPanels?.map((panel,i)=>{
