@@ -1,6 +1,6 @@
 {
   "project": "Czytaki MVP",
-  "updated": "2026-10-30",
+  "updated": "2026-11-01",
   "spec": "SPEC.md",
   "dod": "docs/mvp-dod.md",
   "tiers": {
@@ -66,7 +66,8 @@
       ],
       "dependsOn": ["CZ-04"],
       "tier": "worker",
-      "status": "done"
+      "status": "done",
+      "note": "2026-11-01: oznaczone jako done bez kodu — PR #10 (e669a9a) zmienił wyłącznie planning/tasks.json. Brak OPENAI_DAILY_COST_CAP_GROSZE, rezerwacji kosztu i waiting_capacity w lib/server. Faktyczna realizacja: CZ-20."
     },
     {
       "id": "CZ-06",
@@ -190,7 +191,7 @@
         "docs/costs.md: koszt podglądu (0 zł płatnego AI) i pełnej książki per wariant, marża.",
         "Raport przebiegu ze zrzutami."
       ],
-      "dependsOn": ["CZ-05", "CZ-07", "CZ-08", "CZ-12"],
+      "dependsOn": ["CZ-05", "CZ-07", "CZ-08", "CZ-12", "CZ-20", "CZ-21"],
       "tier": "planner",
       "status": "blocked"
     },
@@ -242,6 +243,45 @@
       "dependsOn": ["CZ-04", "CZ-05"],
       "tier": "planner",
       "status": "done"
+    },
+    {
+      "id": "CZ-20",
+      "title": "Twardy dzienny limit kosztu OpenAI 5 zł",
+      "priority": "high",
+      "description": "Ponowne otwarcie CZ-05: zadanie oznaczono jako done bez kodu (PR #10 zmienił tylko planning/tasks.json), więc dziś żaden limit kosztu OpenAI nie działa. Zaimplementuj twardy limit zgodnie z docs/mvp-dod.md (punkt 'Dzienny limit bezpieczeństwa 5 zł'): zmienna OPENAI_DAILY_COST_CAP_GROSZE (domyślnie 500, dodaj ją do vars w cloudflare.production.json i do .env.example), doba wg Europe/Warsaw, przeliczenie USD→grosze kursem OPENAI_USD_PLN_RATE (domyślnie 4.00, zaokrąglenie w górę). Przed KAŻDYM wywołaniem OpenAI w lib/server/ai.ts atomowo (D1, jedno zapytanie/batch, odporne na równoległe żądania) zarezerwuj szacowany maksymalny koszt wywołania; po odpowiedzi rozlicz rzeczywisty koszt z ai_calls i zwolnij nadwyżkę; nieudane/nieznane wywołania zostawiają rezerwację (konserwatywnie). Brak lub niepoprawna konfiguracja = generowanie zablokowane (fail closed). Gdy rezerwacja się nie mieści: nie wysyłaj wywołania, zamówienie przechodzi w status waiting_capacity (opłacone, bez utraty postępu), UI pokazuje komunikat, a po resecie doby generowanie wznawia się (cron 17 2 * * * i/lub kolejne wywołanie /generate przez klienta) i może trwać kilka dób. Alert e-mail do właściciela (OWNER_ALERT_EMAIL, Resend) przy 80% i 100%, maksymalnie raz na próg na dobę. Migracja D1 przez drizzle. Limit dotyczy wyłącznie opłaconych zamówień; podgląd przed płatnością nadal 0 zł płatnego AI. Nie zwiększaj limitu na potrzeby testów.",
+      "acceptance": [
+        "Każda ścieżka HTTP do OpenAI w lib/server/ai.ts przechodzi przez atomową rezerwację kosztu; test sprawdza, że przy wyczerpanym limicie fetch do OpenAI nie jest wywoływany.",
+        "Test równoległych żądań: suma rezerwacji nigdy nie przekracza OPENAI_DAILY_COST_CAP_GROSZE.",
+        "Po przekroczeniu limitu zamówienie ma status waiting_capacity i wznawia się po resecie doby Europe/Warsaw (test z atrapą zegara).",
+        "Brak/niepoprawna zmienna limitu = 503 bez wywołania OpenAI (fail closed), test.",
+        "Alert e-mail 80%/100% raz na próg na dobę (test z atrapą Resend).",
+        "OPENAI_DAILY_COST_CAP_GROSZE=500 w vars cloudflare.production.json; testy konfiguracji zaktualizowane; npm test && npm run lint zielone.",
+        "docs/ai-costs.md opisuje działający limit; planning/blocked.md: wpis o CZ-05 bez kodu zamknięty."
+      ],
+      "dependsOn": [
+        "CZ-04",
+        "CZ-07"
+      ],
+      "tier": "planner",
+      "status": "todo"
+    },
+    {
+      "id": "CZ-21",
+      "title": "Bramka testowego checkoutu",
+      "priority": "high",
+      "description": "Umożliwia właścicielowi testowy zakup na produkcji (CZ-14) bez publicznego włączania sprzedaży. Checkout działa przy SALES_ENABLED=false wyłącznie, gdy jednocześnie: STRIPE_SECRET_KEY zaczyna się od sk_test_ ORAZ przeglądarka przedstawia ważny token testowy. Nowy sekret TEST_CHECKOUT_TOKEN (ustawia właściciel przez wrangler/API, nigdy w repo ani w logach). Jednorazowe wejście z parametrem zapytania (np. /?test_checkout=<token>) porównuje token w stałym czasie i ustawia podpisane (HMAC z TEST_CHECKOUT_TOKEN), HttpOnly, Secure, SameSite=Lax ciasteczko z terminem ważności (np. 24 h), po czym przekierowuje na adres bez tokenu (token nie zostaje w URL ani w historii). /api/config zwraca checkout:true tylko dla przeglądarki z ważnym ciasteczkiem; checkoutSession() akceptuje tę samą bramkę zamiast salesReady() (pozostałe wymagania salesReady — webhook secret, Resend, EMAIL_FROM, APP_URL, cena — nadal obowiązują). Gdy klucz Stripe jest live (sk_live_) albo TEST_CHECKOUT_TOKEN nie jest ustawiony, bramka jest wyłączona. Zachowanie publiczne bez zmian. Generowanie po płatności nadal wymaga podpisanego webhooka i limitu z CZ-20. Nie logować tokenu ani ciasteczka.",
+      "acceptance": [
+        "Bez ciasteczka: /api/config checkout:false i POST /checkout 503 przy SALES_ENABLED=false (test).",
+        "Z poprawnym ciasteczkiem i sk_test_: checkout:true i sesja Stripe tworzona (atrapa Stripe, test).",
+        "Z kluczem sk_live_, bez TEST_CHECKOUT_TOKEN, z błędnym tokenem, podrobionym lub wygasłym ciasteczkiem: brak dostępu (testy).",
+        "Token z parametru zapytania jest usuwany przekierowaniem; ciasteczko HttpOnly+Secure+SameSite=Lax (test nagłówków).",
+        "TEST_CHECKOUT_TOKEN opisany w CLOUDFLARE.md i .env.example (bez wartości); npm test && npm run lint zielone."
+      ],
+      "dependsOn": [
+        "CZ-20"
+      ],
+      "tier": "planner",
+      "status": "todo"
     }
   ]
 }
