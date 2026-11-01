@@ -1,4 +1,5 @@
 "use client";
+import {request as jsonRequest} from "@/lib/client-request";
 import BubbleOutline from "./bubble-outline";
 import BubbleCopy from "./bubble-copy";
 import {useEffect,useMemo,useRef,useState,type KeyboardEvent as ReactKeyboardEvent,type PointerEvent as ReactPointerEvent} from "react";
@@ -10,11 +11,6 @@ type DragState={mode:"move"|"resize";index:number;pointerId:number;startX:number
 const clamp=(value:number,min:number,max:number)=>Math.min(max,Math.max(min,value));
 const percent=(value:number)=>Math.round(value*100);
 
-async function jsonRequest<T>(url:string,options?:RequestInit):Promise<T>{
- const response=await fetch(url,options),data=await response.json() as T&{error?:string};
- if(!response.ok)throw new Error(data.error||"Nie udało się zapisać zmian.");
- return data;
-}
 
 export default function ComicEditor({orderId}:{orderId:string}){
  const [data,setData]=useState<ComicEditorPayload|null>(null),[page,setPage]=useState(0),[selected,setSelected]=useState(0);

@@ -57,7 +57,11 @@ test('cached illustration can resume lettering without the source photo',async t
  assert.equal(JSON.parse(s.order().lettering_analysis)['0'].decisions[0].placement,'strip');
 });
 test('failed layout saves art, releases the lock and retries without regenerating',async t=>{
- const s=setup(t);s.failAnalysis=true;
+ const s=setup(t);
+ assert.equal((await s.run()).status,200);
+ assert.equal(s.analyses,0);
+ assert.equal(JSON.parse(s.order().book).scenes[0].imageReady,true);
+ s.failAnalysis=true;
  assert.equal((await s.run()).status,503);
  assert.equal(s.objects.has(s.imageKey),true);assert.equal(s.images,1);
  assert.equal(s.order().generated,0);assert.equal(s.order().lock_until,0);
@@ -72,7 +76,8 @@ test('missing source and missing illustration stop without any AI work',async t=
 });
 test('an active generation lock rejects another request before AI work',async t=>{
  const s=setup(t,{locked:true});
- assert.equal((await s.run()).status,409);
+ const response=await s.run();assert.equal(response.status,409);
+ assert.ok((await response.json()).retryAfter>0);
  assert.equal(s.images,0);assert.equal(s.analyses,0);assert.ok(s.order().lock_until>Date.now());
 });
 
@@ -104,4 +109,17 @@ test('waiting capacity resumes saved art through generate endpoint',async t=>{
  const s=setup(t,{status:'waiting_capacity',cached:true});
  assert.equal((await s.run()).status,200);assert.equal(s.images,0);assert.equal(s.analyses,1);
  assert.equal(s.order().generated,1);assert.equal(s.order().status,'generating');
+});
+
+test('expired lease is reclaimed after an isolate dies with art already saved',async t=>{
+ const s=setup(t,{cached:true});
+ await s.env.DB.prepare('UPDATE orders SET lock_token=?,lock_until=? WHERE id=?').bind('dead-isolate',Date.now()-1,'fixture').run();
+ assert.equal((await s.run()).status,200);
+ assert.equal(s.images,0);assert.equal(s.analyses,1);assert.equal(s.order().lock_until,0);
+});
+
+test('a D1 image checkpoint never pays again when R2 is temporarily missing',async t=>{
+ const s=setup(t),book=JSON.parse(s.order().book);book.scenes[0].imageReady=true;
+ await s.env.DB.prepare('UPDATE orders SET book=? WHERE id=?').bind(JSON.stringify(book),'fixture').run();
+ assert.equal((await s.run()).status,503);assert.equal(s.images,0);assert.equal(s.analyses,0);assert.equal(s.order().lock_until,0);
 });

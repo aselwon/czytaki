@@ -5,12 +5,15 @@ import {Buffer} from "node:buffer";
 import fontUrl from "@/lib/assets/LiberationSans-Regular.ttf?inline";
 import {generateBook,generateIllustration,locateComicSpeech} from "@/lib/server/ai";
 import {createBookPdf} from "@/lib/server/pdf";
-import {COMIC_LAYOUT_VERSION,comicLetteringBoxes,comicTemplateIndex} from "@/lib/comic-layouts";
+import {COMIC_LAYOUT_VERSION,comicTemplateIndex} from "@/lib/comic-layouts";
 import {sceneImageKey,sceneImageType,templatePrefix} from "@/lib/server/comic-assets";
 import {apiError,findOrder,HttpError,infrastructure,ownOrder,runtime,sameOrigin,settings,story,view} from "@/lib/server/runtime";
 
+const generationLeaseMs=180000;
+
 export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
  let id:string|undefined,lock:string|undefined;
+ let heartbeat:ReturnType<typeof setInterval>|undefined;
  try{
   sameOrigin(req);
   let r=await ownOrder(req,(await params).id);id=r.id;
@@ -20,8 +23,14 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
   if(r.status==="needs_refund")throw new HttpError(409,"Zamówienie oczekuje na obsługę.");
   if(!runtime().OPENAI_API_KEY)throw new HttpError(503,"Generator AI nie został podłączony.");
   const {DB,BUCKET}=infrastructure();lock=crypto.randomUUID();const now=Date.now();
-  const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=?,status='generating',updated_at=? WHERE id=? AND lock_until<? AND payment_status='paid' AND payment_verified_at IS NOT NULL AND status NOT IN ('safety_blocked','ready','assembled','delivered','needs_refund')").bind(lock,now+300000,now,id,now).run();
-  if(!claim.meta.changes)throw new HttpError(409,"Ten krok jest już przygotowywany. Spróbuj ponownie za chwilę.");
+  const claim=await DB.prepare("UPDATE orders SET lock_token=?,lock_until=?,status='generating',updated_at=? WHERE id=? AND lock_until<? AND payment_status='paid' AND payment_verified_at IS NOT NULL AND status NOT IN ('safety_blocked','ready','assembled','delivered','needs_refund')").bind(lock,now+generationLeaseMs,now,id,now).run();
+  if(!claim.meta.changes){
+   const current=await findOrder(id),retryAfter=Math.max(1,Math.ceil((current.lock_until-Date.now())/1000));
+   return Response.json({error:`Ten krok jest już przygotowywany. Ponowimy za ${retryAfter} s.`,retryAfter},{status:409,headers:{"Retry-After":String(retryAfter),"Cache-Control":"no-store"}});
+  }
+  heartbeat=setInterval(()=>{
+   void DB.prepare("UPDATE orders SET lock_until=? WHERE id=? AND lock_token=?").bind(Date.now()+generationLeaseMs,id,lock).run().catch(()=>{});
+  },60000);
   r=await findOrder(id);const p=settings(r);const b=story(r);
   if(b?.comicLayoutVersion===1){
    b.comicLayoutVersion=COMIC_LAYOUT_VERSION;
@@ -40,27 +49,36 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
    let result:Uint8Array;
    if(cached){result=new Uint8Array(await cached.arrayBuffer());}
    else{
+    if(b.scenes[r.generated].imageReady)throw new HttpError(503,"Zapisana ilustracja jest chwilowo niedostępna. Spróbuj ponownie.");
     const photo=r.photo_key?await BUCKET.get(r.photo_key):null;
     if(!photo)throw new HttpError(410,"Zdjęcie wygasło. Przygotuj nową historię.");
     const first=r.generated>0?await BUCKET.get(sceneImageKey(id,b,0)):null;
     result=await generateIllustration(r.id,p,b,r.generated,new Uint8Array(await photo.arrayBuffer()),r.photo_type!,first?new Uint8Array(await first.arrayBuffer()):undefined);
    }
-   if(!cached)await BUCKET.put(imageKey,result,{httpMetadata:{contentType:sceneImageType(b)}});
-   if(b.comicLayoutVersion===COMIC_LAYOUT_VERSION){
+   if(!cached){
+    await BUCKET.put(imageKey,result,{httpMetadata:{contentType:sceneImageType(b)}});
+    b.scenes[r.generated].imageReady=true;
+    await DB.prepare("UPDATE orders SET book=? WHERE id=? AND lock_token=?").bind(JSON.stringify(b),id,lock).run();
+   }
+   b.scenes[r.generated].imageReady=true;
+   if(cached&&b.comicLayoutVersion===COMIC_LAYOUT_VERSION){
     b.scenes[r.generated].lettering=await locateComicSpeech(r.id,b.scenes[r.generated],result,saveLetteringAnalysis(DB,r.id,r.generated));
     b.scenes[r.generated].placementVersion=1;
    }
    
-   await DB.prepare("UPDATE orders SET generated=generated+1,book=? WHERE id=? AND lock_token=?").bind(JSON.stringify(b),id,lock).run();
+   if(cached||b.comicLayoutVersion!==COMIC_LAYOUT_VERSION)await DB.prepare("UPDATE orders SET generated=generated+1,book=? WHERE id=? AND lock_token=?").bind(JSON.stringify(b),id,lock).run();
   }else{
-   const images:Uint8Array[]=[];
-   for(let i=0;i<b.scenes.length;i++){const image=await BUCKET.get(sceneImageKey(id,b,i));if(!image)throw new HttpError(503,"Brakuje jednej z ilustracji.");images.push(new Uint8Array(await image.arrayBuffer()));}
    // Resume partially generated older books by analysing one saved page per request.
    const pending=p.format==="comic"?b.scenes.findIndex(scene=>scene.placementVersion!==1):-1;
-   if(pending>=0){b.scenes[pending].lettering=await locateComicSpeech(r.id,b.scenes[pending],images[pending],saveLetteringAnalysis(DB,r.id,pending));b.scenes[pending].placementVersion=1;
+   if(pending>=0){
+    const image=await BUCKET.get(sceneImageKey(id,b,pending));
+    if(!image)throw new HttpError(503,"Brakuje jednej z ilustracji.");
+    b.scenes[pending].lettering=await locateComicSpeech(r.id,b.scenes[pending],new Uint8Array(await image.arrayBuffer()),saveLetteringAnalysis(DB,r.id,pending));b.scenes[pending].placementVersion=1;
     await DB.prepare("UPDATE orders SET book=?,lock_token=NULL,lock_until=0,updated_at=? WHERE id=? AND lock_token=?").bind(JSON.stringify(b),Date.now(),id,lock).run();lock=undefined;
     return Response.json(view(await findOrder(id)),{headers:{"Cache-Control":"no-store"}});
    }
+   const images:Uint8Array[]=[];
+   for(let i=0;i<b.scenes.length;i++){const image=await BUCKET.get(sceneImageKey(id,b,i));if(!image)throw new HttpError(503,"Brakuje jednej z ilustracji.");images.push(new Uint8Array(await image.arrayBuffer()));}
    const fontBytes=new Uint8Array(Buffer.from(fontUrl.split(",")[1],"base64"));
    const pdf=await createBookPdf(b,p,images,fontBytes);
    if(pdf.length>20*1024*1024)throw new HttpError(503,"Książeczka jest zbyt duża do wysyłki. Skontaktuj się z obsługą.");
@@ -75,5 +93,5 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
   if(id&&lock&&e instanceof ContentSafetyError)try{await infrastructure().DB.prepare("UPDATE orders SET status='safety_blocked',updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();}catch{}
   if(id&&lock)try{await infrastructure().DB.prepare("UPDATE orders SET lock_token=NULL,lock_until=0,updated_at=? WHERE id=? AND lock_token=?").bind(Date.now(),id,lock).run();}catch{}
   return apiError(e);
- }
+ }finally{if(heartbeat)clearInterval(heartbeat); }
 }
