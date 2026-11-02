@@ -31,7 +31,7 @@
   },
   "vars": {
     "SALES_ENABLED": "false",
-    "OPENAI_DAILY_COST_CAP_GROSZE": "500",
+    "OPENAI_DAILY_COST_CAP_GROSZE": "2000",
     "OPENAI_USD_PLN_RATE": "4.00",
     "PREVIEW_WORKERS_AI": "false",
     "PREVIEW_DAILY_NEURON_CAP": "5000",
