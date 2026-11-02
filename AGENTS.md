@@ -49,7 +49,7 @@ Z tego powodu CI (`.github/workflows/ci.yml`) **nie zostało jeszcze dodane** �
 - Każda zmiana zachowania ma test w `tests/`. Testy nie wykonują zapytań sieciowych: OpenAI, Stripe i Resend zawsze przez atrapy.
 - Zmiany schematu tylko przez migracje Drizzle (`npm run db:generate`) z zachowaniem dawnych zamówień.
 - Operacje płatności, generowania i wysyłki muszą pozostać idempotentne i odporne na ponowienia (wzorce w `lib/server/payments.ts`).
-- Każde wywołanie OpenAI przechodzi przez bramkę, która wymaga zamówienia opłaconego zweryfikowanym webhookiem Stripe, zapisuje koszt i pilnuje dziennego limitu bezpieczeństwa **5 zł/dobę** (`OPENAI_DAILY_COST_CAP_GROSZE=500`, doba Europe/Warsaw), egzekwowanego w kodzie bramki, nie tylko w dokumentacji (CZ-04/CZ-05). Kod przed płatnością nie może importować ani wywoływać klienta OpenAI.
+- Każde wywołanie OpenAI przechodzi przez bramkę, która wymaga zamówienia opłaconego zweryfikowanym webhookiem Stripe, zapisuje koszt i pilnuje dziennego limitu bezpieczeństwa **20 zł/dobę** (`OPENAI_DAILY_COST_CAP_GROSZE=2000`, doba Europe/Warsaw), egzekwowanego w kodzie bramki, nie tylko w dokumentacji (CZ-04/CZ-05). Kod przed płatnością nie może importować ani wywoływać klienta OpenAI.
 - Tekst dla klienta po polsku (z obsługą obecnych walut), identyfikatory po angielsku.
 - Nie obniżaj progów testów ani nie wyłączaj reguł lint, żeby przejść CI. Wyjątek reguły tylko z komentarzem uzasadniającym.
 - Zadanie kończy się, gdy spełnia `acceptance`, a `npm test`, `npx tsc --noEmit` i `npm run lint` są zielone (skill `full-stop`).

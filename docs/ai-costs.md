@@ -29,7 +29,7 @@ Dane zdjęć, prompty i klucze nie są zapisywane w ewidencji.
 
 ## Dzienny limit (CZ-20)
 
-`OPENAI_DAILY_COST_CAP_GROSZE=500` i `OPENAI_USD_PLN_RATE=4.00` są
+`OPENAI_DAILY_COST_CAP_GROSZE=2000` i `OPENAI_USD_PLN_RATE=4.00` są
 wartościami konfiguracji produkcyjnej i `.env.example`. Brak, pusty ciąg,
 niepoprawny lub niedodatni limit/kurs blokuje generowanie HTTP 503 — kod nie
 podstawia domyślnych wartości przy błędzie konfiguracji. Doba jest wyznaczana
