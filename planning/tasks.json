@@ -390,6 +390,23 @@
       ],
       "tier": "worker",
       "status": "review"
+    },
+    {
+      "id": "CZ-28",
+      "title": "Sprzedaż tylko w PLN na start i opcjonalne faktury Stripe",
+      "priority": "high",
+      "description": "Domyślnie każdy kraj płaci w PLN (MULTI_CURRENCY=true przywraca ceny regionalne USD/SEK/NOK/DKK/EUR). STRIPE_INVOICES=true włącza invoice_creation w Stripe Checkout: faktura PDF po płatności, opis i metadane z numerem zamówienia. Oba przełączniki domyślnie wyłączone.",
+      "acceptance": [
+        "Bez MULTI_CURRENCY klient z dowolnego kraju widzi i płaci ceny PLN.",
+        "MULTI_CURRENCY=true przywraca dotychczasowe ceny regionalne.",
+        "Bez STRIPE_INVOICES sesja Checkout nie ma invoice_creation; z flagą ma invoice_creation z numerem zamówienia.",
+        "npm test, npx tsc --noEmit i npm run lint są zielone."
+      ],
+      "dependsOn": [
+        "CZ-27"
+      ],
+      "tier": "worker",
+      "status": "review"
     }
   ]
 }

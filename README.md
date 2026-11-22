@@ -45,7 +45,9 @@ W hostingu skonfiguruj:
 
 Zacznij od Stripe w trybie testowym. Webhook: /api/payments/webhook; zdarzenia checkout.session.completed i checkout.session.async_payment_succeeded. Weryfikowany jest podpis, czas, identyfikator sesji, zamówienie, status, waluta i pełna kwota. Parametr checkout=success nie odblokowuje pliku. Nie używaj osobnego Stripe Payment Link: aplikacja sama tworzy sesję Checkout z identyfikatorem właściwego zamówienia.
 
-Waluta jest dobierana po kraju rozpoznanym przez Cloudflare, z językiem przeglądarki jako zapasowym sygnałem. Ceny 8/15/30 stron to: Polska 29/39/65 PLN, USA 7,99/9,99/16,99 USD, Szwecja 79/99/169 SEK, Norwegia 69/99/159 NOK, Dania 49/69/109 DKK oraz Finlandia 6,99/8,99/14,99 EUR. Cena, wariant i waluta zostają zapisane w zamówieniu, a Stripe musi potwierdzić dokładnie tę samą kwotę.
+Domyślnie wszyscy klienci płacą w PLN. Po ustawieniu `MULTI_CURRENCY=true` waluta jest dobierana po kraju rozpoznanym przez Cloudflare, z językiem przeglądarki jako zapasowym sygnałem. Ceny 8/15/30 stron to: Polska 29/39/65 PLN, USA 7,99/9,99/16,99 USD, Szwecja 79/99/169 SEK, Norwegia 69/99/159 NOK, Dania 49/69/109 DKK oraz Finlandia 6,99/8,99/14,99 EUR. Cena, wariant i waluta zostają zapisane w zamówieniu, a Stripe musi potwierdzić dokładnie tę samą kwotę.
+
+Faktury: `STRIPE_INVOICES=true` włącza w Stripe Checkout `invoice_creation` — Stripe po płatności wystawia fakturę PDF i wysyła ją klientowi (płatna funkcja Stripe Invoicing). Domyślnie wyłączone; zgodność dokumentu z polskim VAT potwierdź z księgową.
 
 Webhook Stripe wymaga osiągalnego publicznego adresu; przed sprzedażą trzeba potwierdzić publiczny dostęp endpointu. Nie zmieniono odbiorców wdrożenia automatycznie.
 

@@ -22,6 +22,12 @@ export async function checkoutSession(r:OrderRow,email:string,req?:Request){if(!
   cancel_url:base.origin+"/?order="+r.id,
  });
  if(base.protocol==="https:")data.set("line_items[0][price_data][product_data][images][0]",new URL("/stripe-czytaki-payment-upload.jpg",base).href);
+ // Optional: Stripe issues an invoice PDF after payment (paid Stripe Invoicing feature).
+ if(runtime().STRIPE_INVOICES==="true"){
+  data.set("invoice_creation[enabled]","true");
+  data.set("invoice_creation[invoice_data][description]",`Spersonalizowana książeczka PDF Czytaki, zamówienie ${r.id}`);
+  data.set("invoice_creation[invoice_data][metadata][order_id]",r.id);
+ }
  const session=await stripe("checkout/sessions",data,"czytaki-checkout-"+r.id+"-"+(prior?.id||"first"));if(!session.url?.startsWith("https://checkout.stripe.com/"))throw new HttpError(503,"Nie udało się utworzyć bezpiecznej płatności.");await e.DB.prepare("UPDATE orders SET stripe_session=?,status=CASE WHEN status='draft' THEN 'awaiting_payment' ELSE status END,updated_at=? WHERE id=?").bind(session.id,Date.now(),r.id).run();return session.url;
 }
 export async function confirmAndDeliver(r:OrderRow,verifiedWebhook=false){if(!r.stripe_session)throw new HttpError(409,"To zamówienie nie ma jeszcze płatności.");const s=await stripe("checkout/sessions/"+encodeURIComponent(r.stripe_session));if(!validPayment(s,r))throw new HttpError(409,"Płatność nie została jeszcze potwierdzona. Spróbuj ponownie za chwilę.");const email=z.string().email().max(254).safeParse(s.customer_details?.email||r.email);if(!email.success)throw new HttpError(503,"Brakuje poprawnego adresu dostawy.");await infrastructure().DB.prepare("UPDATE orders SET payment_status='paid',email=?,updated_at=? WHERE id=? AND payment_status!='paid'").bind(email.data,Date.now(),r.id).run();if(verifiedWebhook)await infrastructure().DB.prepare("UPDATE orders SET status=CASE WHEN status IN ('draft','awaiting_payment') THEN 'paid' ELSE status END,payment_verified_at=COALESCE(payment_verified_at,?) WHERE id=? AND payment_status='paid'").bind(Date.now(),r.id).run();const confirmed=await findOrder(r.id);if(confirmed.pdf_key)await deliver(confirmed);return findOrder(r.id);}

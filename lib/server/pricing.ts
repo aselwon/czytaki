@@ -28,14 +28,18 @@ function localeCountry(req:Request){
  return match?.[1]?.toUpperCase()||"PL";
 }
 
-export function priceForRequest(req:Request,priceCents?:string,regularPriceCents?:string,pages:PageCount=8):RegionalPrice{
+// Launch sells in PLN only: one currency keeps VAT, accounting and refunds simple.
+// MULTI_CURRENCY=true restores the regional price table below.
+export function multiCurrency(value?:string){return value==="true";}
+
+export function priceForRequest(req:Request,priceCents?:string,regularPriceCents?:string,pages:PageCount=8,regionalPricing=false):RegionalPrice{
  const country=localeCountry(req);
  const polish=pages===8?{amount:basePrice(priceCents),regularAmount:baseRegularPrice(regularPriceCents),currency:"pln"}:regional.PL[pages];
- return{pages,...(regional[country]?.[pages]||polish),country};
+ return{pages,...((regionalPricing&&regional[country]?.[pages])||polish),country};
 }
 
-export function pricesForRequest(req:Request,priceCents?:string,regularPriceCents?:string){
- return pageCounts.map(pages=>priceForRequest(req,priceCents,regularPriceCents,pages));
+export function pricesForRequest(req:Request,priceCents?:string,regularPriceCents?:string,regionalPricing=false){
+ return pageCounts.map(pages=>priceForRequest(req,priceCents,regularPriceCents,pages,regionalPricing));
 }
 
 export function regularAmountForCurrency(currency:string,pages:PageCount=8,regularPriceCents?:string){

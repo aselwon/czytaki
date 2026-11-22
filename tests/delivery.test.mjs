@@ -200,3 +200,18 @@ test('orders paid before consent tracking get no fabricated confirmation',async 
  await deliver(s.order());
  assert.doesNotMatch(JSON.parse(s.emails()[0].options.body).text,/Potwierdzenie zgody/);
 });
+
+test('checkout creates no Stripe invoice unless STRIPE_INVOICES is enabled',async t=>{
+ const s=setup(t,{payment_status:'unpaid',stripe_session:null,email:null});
+ await checkoutSession(s.order(),'buyer@example.invalid');
+ assert.equal(s.calls[0].options.body.get('invoice_creation[enabled]'),null);
+});
+test('STRIPE_INVOICES=true asks Stripe for a post-payment invoice tied to the order',async t=>{
+ const s=setup(t,{payment_status:'unpaid',stripe_session:null,email:null});
+ globalThis.__deliveryTest.env.STRIPE_INVOICES='true';
+ await checkoutSession(s.order(),'buyer@example.invalid');
+ const data=s.calls[0].options.body;
+ assert.equal(data.get('invoice_creation[enabled]'),'true');
+ assert.equal(data.get('invoice_creation[invoice_data][metadata][order_id]'),'test-order');
+ assert.match(data.get('invoice_creation[invoice_data][description]'),/zamówienie test-order/);
+});
