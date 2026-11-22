@@ -1,6 +1,6 @@
 {
   "project": "Czytaki MVP",
-  "updated": "2026-11-01",
+  "updated": "2026-11-22",
   "spec": "SPEC.md",
   "dod": "docs/mvp-dod.md",
   "tiers": {
@@ -357,6 +357,21 @@
       ],
       "tier": "worker",
       "status": "done"
+    },
+    {
+      "id": "CZ-26",
+      "title": "Zgoda na dostarczenie treści cyfrowej przed upływem terminu odstąpienia (art. 38 pkt 13 UPK)",
+      "priority": "high",
+      "description": "Krok 4 ma drugi, osobny i domyślnie niezaznaczony checkbox z żądaniem rozpoczęcia przygotowania PDF przed upływem 14 dni i przyjęciem do wiadomości utraty prawa odstąpienia. Serwer odrzuca checkout bez zgody, zapisuje terms_accepted_at, digital_consent_at i consent_version (migracja 0007), przekazuje wersję w metadanych Stripe, a e-mail z PDF potwierdza zgodę na trwałym nośniku.",
+      "acceptance": [
+        "Checkout bez digitalConsent===true zwraca 400 i niczego nie zmienia.",
+        "Zgoda i wersja tekstu są zapisane w zamówieniu przed przekierowaniem do Stripe.",
+        "E-mail z PDF zawiera potwierdzenie zgody, numer zamówienia i link do regulaminu; starsze zamówienia bez zgody nie dostają fałszywego potwierdzenia.",
+        "npm test, npx tsc --noEmit i npm run lint są zielone."
+      ],
+      "dependsOn": [],
+      "tier": "worker",
+      "status": "review"
     }
   ]
 }

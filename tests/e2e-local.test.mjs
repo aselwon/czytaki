@@ -105,7 +105,7 @@ test('purchase flow uses signed webhook, creates an 8-page PDF and emails its at
  const order=await created.json(),cookie=created.headers.get('set-cookie').split(';')[0];
  const preview=await client(`/api/orders/${order.id}/preview`,{headers:{cookie}});assert.equal(preview.status,302);assert.equal(preview.headers.get('location'),order.sampleImage);
  assert.match(await readFile(new URL('../public'+order.sampleImage,import.meta.url),'utf8'),/<svg/);
- const checkout=await client(`/api/orders/${order.id}/checkout`,{method:'POST',headers:{origin:base,cookie,'content-type':'application/json'},body:JSON.stringify({email:'reader@example.test',termsAccepted:true})});assert.equal(checkout.status,200);assert.equal((await checkout.json()).url,'https://checkout.stripe.com/cs_fixture');
+ const checkout=await client(`/api/orders/${order.id}/checkout`,{method:'POST',headers:{origin:base,cookie,'content-type':'application/json'},body:JSON.stringify({email:'reader@example.test',termsAccepted:true,digitalConsent:true})});assert.equal(checkout.status,200);assert.equal((await checkout.json()).url,'https://checkout.stripe.com/cs_fixture');
  assert.equal(state.aiCalls,0);
  const denied=await client(`/api/orders/${order.id}/generate`,{method:'POST',headers:{origin:base,cookie}});assert.equal(denied.status,403);
  const event=JSON.stringify({type:'checkout.session.completed',data:{object:{id:'cs_fixture',metadata:{orderId:order.id}}}}),stamp=Math.floor(Date.now()/1000),signature=createHmac('sha256',secret).update(`${stamp}.${event}`).digest('hex');
