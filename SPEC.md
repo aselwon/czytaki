@@ -8,7 +8,7 @@ Status: obowiązujący zakres od 2026-10-30.
 
 ## Stan wyjściowy (2026-10-30)
 
-Zaimplementowane: kreator ze zdjęciem, generowanie tekstu i ilustracji (OpenAI), moderacja danych wejściowych i tekstu, warianty 8/15/30 stron, waluty per kraj, skład PDF z polską czcionką, edytor komiksu, Stripe Checkout z podpisanym webhookiem, wysyłka przez Resend z idempotencją, panel `/admin`, dzienne limity per sesja i IP, usuwanie zdjęcia po złożeniu PDF. 82 testy offline.
+Zaimplementowane: kreator ze zdjęciem, generowanie tekstu i ilustracji (OpenAI), moderacja danych wejściowych i tekstu, warianty 8/15/30 stron, waluty per kraj (domyślnie wyłączone, `MULTI_CURRENCY`), skład PDF z polską czcionką, edytor komiksu, Stripe Checkout z podpisanym webhookiem, wysyłka przez Resend z idempotencją, panel `/admin`, dzienne limity per sesja i IP, usuwanie zdjęcia po złożeniu PDF. 82 testy offline.
 
 Braki blokujące sprzedaż:
 
