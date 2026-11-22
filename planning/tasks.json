@@ -423,6 +423,22 @@
       ],
       "tier": "planner",
       "status": "review"
+    },
+    {
+      "id": "CZ-30",
+      "title": "Jeden cron zamiast dwóch (limit 5 cronów na konto w Workers Free)",
+      "priority": "high",
+      "description": "Deploy CZ-27 odrzucił Cloudflare: konto na planie Workers Free ma już 5 cronów (kod 10072). Czytaki używają jednego triggera */2 * * * *; scheduledJobs(event.scheduledTime) uruchamia przy każdym przebiegu dokańczanie zamówień, a w przebiegu o 02:00 UTC dodatkowo retencję.",
+      "acceptance": [
+        "cloudflare.production.json ma jeden cron */2 * * * *.",
+        "Retencja wykonuje się dokładnie raz na dobę (przebieg 02:00 UTC), dokańczanie zamówień przy każdym przebiegu.",
+        "npm test, npx tsc --noEmit i npm run lint są zielone."
+      ],
+      "dependsOn": [
+        "CZ-27"
+      ],
+      "tier": "worker",
+      "status": "review"
     }
   ]
 }

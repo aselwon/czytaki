@@ -23,7 +23,7 @@ test('production configuration targets the owner with private storage and sales 
  assert.deepEqual(config.ai, {binding: 'AI'});
  assert.deepEqual(config.d1_databases, [{binding: 'DB', database_name: 'czytaki-production-orders', database_id: '6b7b4278-352d-4c93-9bdc-b13d14693572', migrations_dir: 'drizzle'}]);
  assert.deepEqual(config.r2_buckets, [{binding: 'BUCKET', bucket_name: 'czytaki-private'}]);
- assert.deepEqual(config.triggers.crons, ['*/2 * * * *', '17 2 * * *']);
+ assert.deepEqual(config.triggers.crons, ['*/2 * * * *']);
 });
 
 test('all production migrations initialize an empty database', t => {

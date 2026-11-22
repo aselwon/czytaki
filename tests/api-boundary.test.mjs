@@ -47,8 +47,8 @@ test('worker normalizes Next HTML 5xx and exceptions, preserving successful bina
 
 test('worker cron runs retention nightly and finishes abandoned orders otherwise',async t=>{
  const seen=globalThis.__scheduled=[];t.after(()=>delete globalThis.__scheduled);
- for(const cron of ['17 2 * * *','*/2 * * * *']){
-  const waits=[];worker.scheduled({cron},{},{waitUntil:p=>waits.push(p)});await Promise.all(waits);
+ for(const scheduledTime of [Date.UTC(2026,10,22,2,0),Date.UTC(2026,10,22,12,4)]){
+  const waits=[];worker.scheduled({cron:'*/2 * * * *',scheduledTime},{},{waitUntil:p=>waits.push(p)});await Promise.all(waits);
  }
- assert.deepEqual(seen,['retention','orders']);
+ assert.deepEqual(seen,['orders','retention','orders']);
 });
