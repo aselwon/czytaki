@@ -12,7 +12,8 @@ const bundle=await build({stdin:{contents:`
 `,resolveDir:root},bundle:true,write:false,platform:'node',format:'esm',plugins:[{
  name:'offline',setup(build){
   build.onResolve({filter:/^(cloudflare:workers|vinext\/server\/fetch-handler)$/},args=>({path:args.path,namespace:'offline'}));
-  build.onLoad({filter:/.*/,namespace:'offline'},args=>({contents:args.path==='cloudflare:workers'?'export const env=globalThis.__testCheckoutEnv;':'export default {fetch:()=>new Response("page")};'}));
+  build.onResolve({filter:/server\/background$/},()=>({path:'background',namespace:'offline'}));
+  build.onLoad({filter:/.*/,namespace:'offline'},args=>({contents:args.path==='background'?'export const finishAbandonedOrders=async()=>({orders:0});':args.path==='cloudflare:workers'?'export const env=globalThis.__testCheckoutEnv;':'export default {fetch:()=>new Response("page")};'}));
  }
 }]});
 const api=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
