@@ -38,7 +38,10 @@ test('studio has footer links and separate unchecked required checkout consent',
  assert.match(source,/<footer>.*<LegalLinks\/>.*<\/footer>/);
  assert.match(source,/\[termsAccepted,setTermsAccepted\]=useState\(false\)/);
  assert.match(source,/<input type="checkbox" required checked=\{termsAccepted\}/);
- assert.match(source,/disabled=\{busy\|\|!config\?\.checkout\|\|!termsAccepted\}/);
- assert.match(source,/JSON.stringify\(\{email,termsAccepted\}\)/);
+ assert.match(source,/disabled=\{busy\|\|!config\?\.checkout\|\|!termsAccepted\|\|!digitalConsent\}/);
+ assert.match(source,/JSON.stringify\(\{email,termsAccepted,digitalConsent\}\)/);
+ assert.match(source,/\[digitalConsent,setDigitalConsent\]=useState\(false\)/);
+ assert.match(source,/<input type="checkbox" required checked=\{digitalConsent\}/);
+ assert.match(source,/<span>\{digitalConsentLabel\}<\/span>/);
  for(const path of ['regulamin','prywatnosc'])assert.ok(source.includes(`href="/${path}" target="_blank"`));
 });

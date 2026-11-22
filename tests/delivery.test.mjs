@@ -26,7 +26,8 @@ function setup(t,overrides={}){
  const db=new DatabaseSync(':memory:');
  db.exec(`CREATE TABLE orders (id TEXT PRIMARY KEY,payment_status TEXT,pdf_key TEXT,email TEXT,
  delivery_status TEXT,email_attempt_at INTEGER,updated_at INTEGER,email_id TEXT,
- payment_verified_at INTEGER,stripe_session TEXT,amount INTEGER,currency TEXT,status TEXT,settings TEXT,book TEXT)`);
+ payment_verified_at INTEGER,stripe_session TEXT,amount INTEGER,currency TEXT,status TEXT,settings TEXT,book TEXT,
+ terms_accepted_at INTEGER,digital_consent_at INTEGER,consent_version TEXT)`);
  const row={id:'test-order',payment_status:'paid',pdf_key:'test.pdf',email:'test@example.invalid',delivery_status:'pending',email_attempt_at:null,updated_at:0,email_id:null,stripe_session:'cs_test_fixture',amount:3900,currency:'pln',status:'ready',settings:JSON.stringify({pages:15}),book:JSON.stringify({title:'Testowa przygoda'}),...overrides};
  db.prepare(`INSERT INTO orders (${Object.keys(row).join(',')}) VALUES (${Object.keys(row).map(()=>'?').join(',')})`).run(...Object.values(row));
  const order=()=>({...db.prepare('SELECT * FROM orders WHERE id=?').get(row.id)});
@@ -177,4 +178,25 @@ test('only webhook confirmation grants AI eligibility, including an already paid
  assert.ok(verified>0);
  await confirmAndDeliver(s.order(),true);
  assert.equal(s.order().payment_verified_at,verified);
+});
+
+test('checkout records the accepted digital-content consent version in Stripe metadata',async t=>{
+ const s=setup(t,{payment_status:'unpaid',stripe_session:null,email:null,consent_version:'2026-11-22',digital_consent_at:1}); 
+ await checkoutSession(s.order(),'buyer@example.invalid');
+ assert.equal(s.calls[0].options.body.get('metadata[digital_consent]'),'2026-11-22');
+});
+test('delivery email confirms the digital-content consent on a durable medium',async t=>{
+ const at=Date.UTC(2026,10,22,9,30);
+ const s=setup(t,{digital_consent_at:at,terms_accepted_at:at,consent_version:'2026-11-22'});
+ await deliver(s.order());
+ const text=JSON.parse(s.emails()[0].options.body).text;
+ assert.match(text,/Potwierdzenie zgody \(22 listopada 2026.*10:30\)/);
+ assert.match(text,/prawo odstąpienia od umowy wygasa/);
+ assert.match(text,/Numer zamówienia: test-order/);
+ assert.match(text,/https:\/\/shop\.example\/regulamin/);
+});
+test('orders paid before consent tracking get no fabricated confirmation',async t=>{
+ const s=setup(t);
+ await deliver(s.order());
+ assert.doesNotMatch(JSON.parse(s.emails()[0].options.body).text,/Potwierdzenie zgody/);
 });

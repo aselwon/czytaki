@@ -36,7 +36,7 @@ async function checkAccess(expected,c=''){
  const config=await api.config(request('/api/config',c));
  assert.equal((await config.json()).checkout,expected);
  assert.equal(config.headers.get('cache-control'),'no-store');
- const response=await api.checkout(request(`/api/orders/${id}/checkout`,`czytaki_session=${owner}; ${c}`,{method:'POST',body:JSON.stringify({email:'buyer@example.invalid',termsAccepted:true})}),{params:Promise.resolve({id})});
+ const response=await api.checkout(request(`/api/orders/${id}/checkout`,`czytaki_session=${owner}; ${c}`,{method:'POST',body:JSON.stringify({email:'buyer@example.invalid',termsAccepted:true,digitalConsent:true})}),{params:Promise.resolve({id})});
  assert.equal(response.status,expected?200:503);
  if(expected)assert.equal((await response.json()).url,'https://checkout.stripe.com/c/pay/offline');
 }

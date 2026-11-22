@@ -9,6 +9,7 @@ export const orders=sqliteTable("orders",{
  paymentStatus:text("payment_status").notNull().default("unpaid"), stripeSession:text("stripe_session"), email:text("email"),
  deliveryStatus:text("delivery_status").notNull().default("pending"), emailId:text("email_id"), emailAttemptAt:integer("email_attempt_at"),
  lockToken:text("lock_token"),lockUntil:integer("lock_until").notNull().default(0),
+ termsAcceptedAt:integer("terms_accepted_at"),digitalConsentAt:integer("digital_consent_at"),consentVersion:text("consent_version"),
  createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),
 },t=>[index("idx_orders_owner_created").on(t.ownerHash,t.createdAt),uniqueIndex("idx_orders_stripe_session").on(t.stripeSession)]);
 export const quotas=sqliteTable("generation_quotas",{key:text("key").primaryKey(),count:integer("count").notNull().default(0)});
