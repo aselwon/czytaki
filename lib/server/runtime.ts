@@ -5,6 +5,7 @@ import {env} from "cloudflare:workers";
 import {productSchema,bookSchema,sceneCountForPages,type ProductInput,type Book,type OrderView} from "../product";
 import {comicLetteringBoxes} from "../comic-layouts";
 import {basePrice,regularAmountForCurrency} from "./pricing";
+import {sellerComplete} from "../seller";
 export type Runtime={DB:D1Database;BUCKET:R2Bucket;AI?:Ai;PREVIEW_WORKERS_AI?:string;PREVIEW_DAILY_NEURON_CAP?:string;OPENAI_DAILY_COST_CAP_GROSZE?:string;OPENAI_USD_PLN_RATE?:string;OWNER_ALERT_EMAIL?:string;OPENAI_API_KEY?:string;OPENAI_TEXT_MODEL?:string;OPENAI_LAYOUT_MODEL?:string;OPENAI_IMAGE_MODEL?:string;STRIPE_SECRET_KEY?:string;STRIPE_WEBHOOK_SECRET?:string;RESEND_API_KEY?:string;EMAIL_FROM?:string;APP_URL?:string;PRICE_CENTS?:string;REGULAR_PRICE_CENTS?:string;SALES_ENABLED?:string;MULTI_CURRENCY?:string;STRIPE_INVOICES?:string;TEST_CHECKOUT_TOKEN?:string;DAILY_GENERATION_LIMIT?:string;DEMO_PDF_ORDER_ID?:string;PDF_PREVIEW_ORDER_ID?:string;ADMIN_PASSWORD?:string;DELETE_TOKEN_SECRET?:string;PHOTO_RETENTION_DAYS?:string;RETENTION_DAYS?:string;};
 export const runtime=()=>env as unknown as Runtime;
 export class HttpError extends Error{constructor(public status:number,message:string){super(message);}}
@@ -31,4 +32,5 @@ export function price(){return basePrice(runtime().PRICE_CENTS);}
 export function salesConfigured(){const e=runtime();let localReturn=false;try{const host=new URL(e.APP_URL||"").hostname;localReturn=host==="localhost"||host==="127.0.0.1";}catch{}return!!(e.STRIPE_SECRET_KEY&&(e.STRIPE_WEBHOOK_SECRET||localReturn)&&e.RESEND_API_KEY&&e.EMAIL_FROM&&e.APP_URL&&Number(e.PRICE_CENTS)>=100 );}
 export function ownerPreviewAllowed(){const e=runtime();return localPreviewAllowed(e.APP_URL,e.SALES_ENABLED);}
 
-export function salesReady(){return salesConfigured()&&runtime().SALES_ENABLED==="true";}
+// Public sales also require filled seller data: the legal documents must identify the seller.
+export function salesReady(){return salesConfigured()&&runtime().SALES_ENABLED==="true"&&sellerComplete();}

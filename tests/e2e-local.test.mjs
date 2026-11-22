@@ -23,7 +23,8 @@ const modules={};
 for(const [name,path] of routes){
  const result=await build({entryPoints:[root+path],bundle:true,write:false,platform:'node',format:'esm',tsconfig:root+'tsconfig.json',plugins:[{
   name:'local-worker-fixtures',setup(build){
-   build.onResolve({filter:/^cloudflare:workers$/},()=>({path:'env',namespace:'fixture'}));
+   build.onResolve({filter:/(?:^@\/lib\/seller|^\.\.\/seller)$/},()=>({path:new URL('./fixtures/seller-complete.mjs',import.meta.url).pathname}));
+  build.onResolve({filter:/^cloudflare:workers$/},()=>({path:'env',namespace:'fixture'}));
    build.onResolve({filter:/^@\/lib\/server\/ai$/},()=>({path:'ai',namespace:'fixture'}));
    build.onResolve({filter:/^@\/lib\/server\/pdf$/},()=>({path:'pdf',namespace:'fixture'}));
    build.onResolve({filter:/\.ttf\?inline$/},()=>({path:'font',namespace:'fixture'}));

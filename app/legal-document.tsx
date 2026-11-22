@@ -1,5 +1,6 @@
 import Link from "next/link";
 import LegalLinks from "./legal-links";
+import {LEGAL_VERSION_DATE,sellerComplete} from "@/lib/seller";
 import "./legal.css";
 
 export default function LegalDocument({title,children}:{title:string;children:React.ReactNode}) {
@@ -7,7 +8,9 @@ export default function LegalDocument({title,children}:{title:string;children:Re
     <header><Link href="/">Czytaki — wróć do kreatora</Link></header>
     <main>
       <h1>{title}</h1>
-      <p className="legal-draft"><strong>Szkic do akceptacji właściciela — niezatwierdzony do sprzedaży.</strong> Wersja z 1 listopada 2026 r. Przed uruchomieniem sprzedaży właściciel musi uzupełnić dane i zatwierdzić treść oraz zgodność z działaniem usługi.</p>
+      {sellerComplete()
+        ?<p className="legal-version">Wersja obowiązująca od {LEGAL_VERSION_DATE}</p>
+        :<p className="legal-draft"><strong>Szkic do akceptacji właściciela — niezatwierdzony do sprzedaży.</strong> Wersja z {LEGAL_VERSION_DATE} Brakuje danych sprzedawcy, więc sprzedaż pozostaje wyłączona.</p>}
       {children}
     </main>
     <footer><LegalLinks/></footer>

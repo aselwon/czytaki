@@ -31,7 +31,7 @@ test('privacy draft describes retention and terms cover likeness and manual refu
  const privacy=await renderPage('prywatnosc/page.tsx'),terms=await renderPage('regulamin/page.tsx');
  for(const text of ['podmiot przetwarzający','dopiero po płatności','po 7 dniach','porzucone zamówienia','po 30 dniach','Ilustracje, PDF'])assert.ok(privacy.includes(text),text);
  assert.match(terms,/Nie gwarantujemy podobieństwa/);
- assert.match(terms,/zwrot wykonuje ręcznie/);
+ assert.match(terms,/zwrot wykonuje ręcznie/i);
 });
 test('studio has footer links and separate unchecked required checkout consent',async()=>{
  const source=await readFile(new URL('../app/studio.tsx',import.meta.url),'utf8');

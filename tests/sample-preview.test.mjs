@@ -19,6 +19,7 @@ const compiled=await build({stdin:{contents:`
  export {default as ComicPreview} from './app/comic-preview';
 `,resolveDir:root},bundle:true,write:false,metafile:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime'],plugins:[{
  name:'offline-sample',setup(build){
+  build.onResolve({filter:/(?:^@\/lib\/seller|^\.\.\/seller)$/},()=>({path:new URL('./fixtures/seller-complete.mjs',import.meta.url).pathname}));
   build.onResolve({filter:/^cloudflare:workers$/},()=>({path:'env',namespace:'offline'}));
   build.onLoad({filter:/.*/,namespace:'offline'},()=>({contents:'export const env=globalThis.__sampleEnv;'}));
  }
