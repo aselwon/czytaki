@@ -26,8 +26,8 @@ for(const route of routes)test(`order route returns JSON on infrastructure excep
  }
 });
 const compiled=await build({stdin:{contents:await readFile(new URL('../worker.ts',import.meta.url),'utf8'),resolveDir:new URL('../',import.meta.url).pathname,loader:'ts'},bundle:true,write:false,platform:'node',format:'esm',plugins:[{name:'worker-stubs',setup(build){
- build.onResolve({filter:/fetch-handler|server\/(retention|test-checkout)$/},args=>({path:args.path,namespace:'stub'}));
- build.onLoad({filter:/.*/,namespace:'stub'},args=>({contents:args.path.includes('fetch-handler')?'export default {fetch:()=>globalThis.__workerResponse()};':args.path.includes('retention')?'export const cleanExpiredOrders=()=>{};':'export const testCheckoutEntry=async()=>null;'}));
+ build.onResolve({filter:/fetch-handler|server\/(retention|test-checkout|background)$/},args=>({path:args.path,namespace:'stub'}));
+ build.onLoad({filter:/.*/,namespace:'stub'},args=>({contents:args.path.includes('fetch-handler')?'export default {fetch:()=>globalThis.__workerResponse()};':args.path.includes('retention')?'export const cleanExpiredOrders=async()=>{globalThis.__scheduled?.push("retention");};':args.path.includes('background')?'export const finishAbandonedOrders=async()=>{globalThis.__scheduled?.push("orders");return {orders:0};};':'export const testCheckoutEntry=async()=>null;'}));
 }}]});
 const {default:worker}=await import('data:text/javascript;base64,'+Buffer.from(compiled.outputFiles[0].text).toString('base64'));
 test('worker normalizes Next HTML 5xx and exceptions, preserving successful binary and page responses',async t=>{
@@ -43,4 +43,12 @@ test('worker normalizes Next HTML 5xx and exceptions, preserving successful bina
   const original=new Response('body',{status,headers:{'content-type':type}});globalThis.__workerResponse=()=>original;
   assert.equal(await worker.fetch(new Request('https://example.test'+path)),original);
  }
+});
+
+test('worker cron runs retention nightly and finishes abandoned orders otherwise',async t=>{
+ const seen=globalThis.__scheduled=[];t.after(()=>delete globalThis.__scheduled);
+ for(const cron of ['17 2 * * *','*/2 * * * *']){
+  const waits=[];worker.scheduled({cron},{},{waitUntil:p=>waits.push(p)});await Promise.all(waits);
+ }
+ assert.deepEqual(seen,['retention','orders']);
 });

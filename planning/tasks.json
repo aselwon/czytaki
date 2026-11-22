@@ -372,6 +372,24 @@
       "dependsOn": [],
       "tier": "worker",
       "status": "review"
+    },
+    {
+      "id": "CZ-27",
+      "title": "Dokończenie generowania i wysyłki po stronie serwera (cron), gdy klient zamknie kartę",
+      "priority": "high",
+      "description": "Krok generowania wydzielony do lib/server/generation.ts i używany przez endpoint oraz nowy cron */2 * * * * (lib/server/background.ts). Cron wybiera opłacone (webhook) zamówienia bez aktywności od 3 min i bez blokady, wykonuje kolejne kroki w budżecie 4 min i wysyła PDF e-mailem. Komunikaty w kreatorze nie każą już zostawiać otwartej karty; komunikat limitu kosztu mówi o automatycznym dokończeniu.",
+      "acceptance": [
+        "Opłacone zamówienie porzucone po płatności zostaje złożone i wysłane bez przeglądarki.",
+        "Zamówienia aktywne, nieopłacone, bez webhooka, zablokowane, safety_blocked, needs_refund, wysłane i przeterminowane nie są ruszane.",
+        "Retencja nadal działa tylko z cronem 17 2 * * *.",
+        "Zachowanie endpointu generate bez zmian (dotychczasowe testy przechodzą).",
+        "npm test, npx tsc --noEmit, npm run lint i npm run build są zielone."
+      ],
+      "dependsOn": [
+        "CZ-26"
+      ],
+      "tier": "worker",
+      "status": "review"
     }
   ]
 }

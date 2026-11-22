@@ -1,7 +1,7 @@
 import {HttpError,infrastructure} from './runtime';
 import {aiPricing} from './ai-pricing';
 
-export const capacityMessage='Dzisiejszy limit generowania został wykorzystany. Zamówienie jest opłacone, a postęp zapisany. Wróć jutro i kliknij „Kontynuuj generowanie”. Książeczka może powstawać przez kilka dni.';
+export const capacityMessage='Dzisiejszy limit generowania został wykorzystany. Zamówienie jest opłacone, a postęp zapisany. Dokończymy książeczkę automatycznie, gdy limit się odnowi, i wyślemy PDF na Twój e-mail. Nie musisz nic robić.';
 export function budgetConfig(){
  const e=infrastructure(),cap=Number(e.OPENAI_DAILY_COST_CAP_GROSZE),rate=Number(e.OPENAI_USD_PLN_RATE);
  if(!e.OPENAI_DAILY_COST_CAP_GROSZE?.trim()||!Number.isSafeInteger(cap)||cap<=0||!e.OPENAI_USD_PLN_RATE?.trim()||!Number.isFinite(rate)||rate<=0)throw new HttpError(503,'Nieprawidłowa konfiguracja limitu AI. Skontaktuj się z obsługą.');

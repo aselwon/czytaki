@@ -109,18 +109,19 @@ i `RETENTION_DAYS=30`; decyzje o polityce retencji należą do właściciela.
 
 ## 6. Cron Triggers
 
-`triggers.crons: ["17 2 * * *"]` uruchamia `worker.ts` codziennie o 02:17 UTC
-(03:17 zimą / 04:17 latem w Polsce). Handler wywołuje `cleanExpiredOrders`
-przez `waitUntil`: usuwa przeterminowane zdjęcia i zamówienia z D1/R2.
-Codzienny interwał oznacza opóźnienie do kolejnego przebiegu względem progu
-wieku; nie dowodzi ścisłego SLA usunięcia w 7 dni.
+`triggers.crons` ma dwa wpisy, rozdzielane przez `event.cron` w `lib/server/schedule.ts`:
 
-**Wznawianie generowania nie jest jeszcze zaimplementowane jako zadanie cron.**
-Nie dodawaj pozornego drugiego triggera: obecny handler wykonałby znowu retencję.
-Po dostarczeniu pipeline po płatności trzeba podłączyć osobny handler wznawiania,
-wybrać harmonogram (np. co 5 minut), rozdzielać zadania przez `event.cron` i
-potwierdzić idempotencję, weryfikację płatności oraz dzienny limit kosztu AI.
-To otwarty warunek uruchomienia sprzedaży; ten PR nie implementuje pipeline.
+- `17 2 * * *` — codziennie o 02:17 UTC (03:17 zimą / 04:17 latem w Polsce)
+  `cleanExpiredOrders` usuwa przeterminowane zdjęcia i zamówienia z D1/R2.
+  Codzienny interwał oznacza opóźnienie do kolejnego przebiegu względem progu
+  wieku; nie dowodzi ścisłego SLA usunięcia w 7 dni.
+- `*/2 * * * *` — co 2 minuty `finishAbandonedOrders` (`lib/server/background.ts`)
+  dokańcza opłacone zamówienia, przy których klient zamknął kartę: bez aktywności
+  od 3 minut, bez aktywnej blokady, płatność potwierdzona webhookiem, nie starsze
+  niż 14 dni. Wykonuje te same kroki co przeglądarka (`lib/server/generation.ts`,
+  ta sama blokada i dzienny limit kosztu AI), a po złożeniu PDF wysyła e-mail.
+  Na przebieg przypada najwyżej 5 zamówień i 4 minuty. Zamówienia wstrzymane
+  limitem kosztu ruszają same po odnowieniu limitu.
 
 ## 7. Build i publikacja (publikuje wyłącznie właściciel lub harness)
 
