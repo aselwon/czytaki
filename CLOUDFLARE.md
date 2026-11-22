@@ -109,19 +109,21 @@ i `RETENTION_DAYS=30`; decyzje o polityce retencji należą do właściciela.
 
 ## 6. Cron Triggers
 
-`triggers.crons` ma dwa wpisy, rozdzielane przez `event.cron` w `lib/server/schedule.ts`:
+`triggers.crons` ma jeden wpis, `*/2 * * * *`. Darmowy plan Workers pozwala na
+5 cronów na całe konto, więc Czytaki zajmują tylko jeden; zadania rozdziela
+`scheduledJobs(event.scheduledTime)` w `lib/server/schedule.ts`:
 
-- `17 2 * * *` — codziennie o 02:17 UTC (03:17 zimą / 04:17 latem w Polsce)
-  `cleanExpiredOrders` usuwa przeterminowane zdjęcia i zamówienia z D1/R2.
-  Codzienny interwał oznacza opóźnienie do kolejnego przebiegu względem progu
-  wieku; nie dowodzi ścisłego SLA usunięcia w 7 dni.
-- `*/2 * * * *` — co 2 minuty `finishAbandonedOrders` (`lib/server/background.ts`)
+- przy każdym uruchomieniu (co 2 minuty) `finishAbandonedOrders` (`lib/server/background.ts`)
   dokańcza opłacone zamówienia, przy których klient zamknął kartę: bez aktywności
   od 3 minut, bez aktywnej blokady, płatność potwierdzona webhookiem, nie starsze
   niż 14 dni. Wykonuje te same kroki co przeglądarka (`lib/server/generation.ts`,
   ta sama blokada i dzienny limit kosztu AI), a po złożeniu PDF wysyła e-mail.
   Na przebieg przypada najwyżej 5 zamówień i 4 minuty. Zamówienia wstrzymane
   limitem kosztu ruszają same po odnowieniu limitu.
+- raz na dobę, w przebiegu o 02:00 UTC (03:00 zimą / 04:00 latem w Polsce),
+  dodatkowo `cleanExpiredOrders` usuwa przeterminowane zdjęcia i zamówienia z D1/R2.
+  Codzienny interwał oznacza opóźnienie do kolejnego przebiegu względem progu
+  wieku; nie dowodzi ścisłego SLA usunięcia w 7 dni.
 
 ## 7. Build i publikacja (publikuje wyłącznie właściciel lub harness)
 

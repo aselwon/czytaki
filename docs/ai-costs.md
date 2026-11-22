@@ -61,8 +61,8 @@ Odpowiedź po północy rozlicza pierwotną dobę.
 Brak miejsca oznacza HTTP 503, `waiting_capacity` oraz polski komunikat
 w kreatorze. Opłacenie, książka i zapisane ilustracje pozostają zachowane.
 Klient wznawia przez „Kontynuuj generowanie” (`POST /generate`); nowa doba
-ma osobny budżet. Generowanie może trwać kilka dób. Cron `17 2 * * *`
-pozostaje zadaniem retencji; wznowienie generowania wymaga wizyty klienta.
+ma osobny budżet. Generowanie może trwać kilka dób. Cron `*/2 * * * *`
+wznawia generowanie sam (`lib/server/background.ts`), bez wizyty klienta.
 Retencja zdjęć nadal wynosi maksymalnie 7 dni, więc długie oczekiwanie może
 wymagać interwencji właściciela.
 

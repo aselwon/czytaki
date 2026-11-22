@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {build} from 'esbuild';
-import {ORDERS_CRON,RETENTION_CRON,scheduledJob} from '../lib/server/schedule.ts';
+import {ORDERS_CRON,scheduledJobs} from '../lib/server/schedule.ts';
 
 // Real background selection and loop; generation, delivery and storage are offline fakes.
 const root=new URL('../',import.meta.url).pathname;
@@ -101,7 +101,12 @@ test('an exhausted time budget starts no work',async t=>{
 
 test('scheduled jobs match the production cron triggers',()=>{
  const config=JSON.parse(readFileSync(new URL('../cloudflare.production.json',import.meta.url),'utf8'));
- assert.deepEqual([...config.triggers.crons].sort(),[ORDERS_CRON,RETENTION_CRON].sort());
- assert.equal(scheduledJob(RETENTION_CRON),'retention');
- assert.equal(scheduledJob(ORDERS_CRON),'orders');
+ // One trigger only: the Workers Free plan caps cron triggers per account.
+ assert.deepEqual(config.triggers.crons,[ORDERS_CRON]);
+ const at=(h,m)=>Date.UTC(2026,10,22,h,m);
+ assert.deepEqual(scheduledJobs(at(2,0)),['orders','retention']);
+ for(const [h,m] of [[2,2],[1,58],[3,0],[14,0],[0,0]])assert.deepEqual(scheduledJobs(at(h,m)),['orders'],`${h}:${m}`);
+ // Exactly one retention run among the 720 even-minute runs of a day.
+ let runs=0;for(let minute=0;minute<1440;minute+=2)runs+=scheduledJobs(Date.UTC(2026,10,22,0,minute)).includes('retention')?1:0;
+ assert.equal(runs,1);
 });
