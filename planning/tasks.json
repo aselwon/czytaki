@@ -407,6 +407,22 @@
       ],
       "tier": "worker",
       "status": "review"
+    },
+    {
+      "id": "CZ-29",
+      "title": "Dane sprzedawcy w jednym miejscu, pełny regulamin i polityka prywatności, checklist go-live",
+      "priority": "high",
+      "description": "lib/seller.ts jest jedynym miejscem na dane sprzedawcy i administratora danych. Regulamin i polityka prywatności opisują rzeczywisty przebieg usługi (art. 38 pkt 13, rękojmia treści cyfrowej, realizacja do 7 dni, licencja na użytek osobisty, podstawy RODO, odbiorcy i transfery do USA, retencja, cookies). Bez danych sprzedawcy dokumenty mają baner szkicu, a salesReady() nie włącza sprzedaży. docs/go-live.md zawiera kroki właściciela.",
+      "acceptance": [
+        "Bez danych w lib/seller.ts dokumenty i linki są oznaczone jako szkic, a salesReady() zwraca false mimo SALES_ENABLED=true.",
+        "Po uzupełnieniu danych dokumenty pokazują sprzedawcę, e-mail i datę wersji bez banera szkicu.",
+        "npm test, npx tsc --noEmit, npm run lint i npm run build są zielone."
+      ],
+      "dependsOn": [
+        "CZ-28"
+      ],
+      "tier": "planner",
+      "status": "review"
     }
   ]
 }

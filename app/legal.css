@@ -5,3 +5,7 @@
 .legal-document a { text-decoration: underline; text-underline-offset: 3px; }
 .legal-draft { padding: 16px; border: 2px solid currentColor; border-radius: 12px; }
 .legal-document footer { padding: 24px 0; }
+.legal-document ul { margin: 12px 0; padding-left: 1.4em; list-style: disc; }
+.legal-document li { margin: 6px 0; }
+.legal-document ul.legal-seller { list-style: none; padding-left: 0; }
+.legal-version { opacity: .75; font-size: .95rem; }
